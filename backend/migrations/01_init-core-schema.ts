@@ -54,7 +54,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     channel: { type: 'text', notNull: true },
     status: { type: 'text', notNull: true, default: 'created' },
     fulfillment_type: { type: 'text', notNull: true },
-    requested_time: { type: 'timestamptz', notNull: true },
+    // Null for ASAP orders — only scheduled orders carry an explicit customer-requested time.
+    // See docs/architecture.md: requested_time (customer intent) vs estimated_ready_at (system estimate).
+    requested_time: { type: 'timestamptz' },
     estimated_ready_at: { type: 'timestamptz' },
     payment_method: { type: 'text', notNull: true },
     payment_status: { type: 'text', notNull: true, default: 'unpaid' },

@@ -8,6 +8,9 @@ const envSchema = z.object({
   TWILIO_ACCOUNT_SID: z.string().min(1, "TWILIO_ACCOUNT_SID is required"),
   TWILIO_AUTH_TOKEN: z.string().min(1, "TWILIO_AUTH_TOKEN is required"),
   TWILIO_PHONE_NUMBER: z.string().min(1, "TWILIO_PHONE_NUMBER is required"),
+  JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
+  OTP_EXPIRY_MINUTES: z.coerce.number().int().positive().default(5),
+  OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
 });
 
 const parsed = envSchema.safeParse(process.env);

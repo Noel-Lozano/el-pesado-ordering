@@ -73,8 +73,7 @@ here cost real money and real customers standing in line.
 
 ## 7. Secrets & config
 
-- No secrets in source control, ever — `.env` files are gitignored, and
-  a `.env.example` with placeholder keys is committed instead.
+- No secrets in source control, ever — `.env` files are gitignored
 - All environment variables are validated at startup (fail fast if a
   required key is missing) rather than failing later mid-request.
 
