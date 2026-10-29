@@ -314,6 +314,10 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
   - **Frontend Node types:** `@types/node` went from `^20` to `^24`, to match the Node 24 runtime and satisfy Vitest 5's peer requirement.
   - **Menu images:** not rendered yet, because every `image_url` is null. Showing R2 photos will need `images.remotePatterns` in `next.config.ts`.
   - **Error page when the API is down:** in production, the ISR page keeps serving the last good menu, so `error.tsx` only appears on a cold cache or in dev.
+- **Found during slice 2:**
+  - **Category on cart lines:** `CartLine` also stores `categoryName`. 17 names appear in both Burritos and Montadas (for example "Frijoles con queso"). Without the category, two lines would look identical in the cart, and their screen-reader labels would be the same. Lines are still keyed by `menuItemId` only.
+  - **Pure cart logic:** the reducer and storage parsing live in `context/cartReducer.ts` and `context/cartStorage.ts`, so they can be tested without React. `CartContext.tsx` is the thin React wrapper around them.
+  - **Quantity cap:** each line is capped at 20 (`MAX_QUANTITY_PER_LINE`), the same limit the server will enforce in slice 4.
 
 ## 6. Verification (overall)
 

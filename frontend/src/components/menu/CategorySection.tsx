@@ -19,7 +19,7 @@ export function CategorySection({ category, anchorId }: CategorySectionProps) {
       <ul className="mt-3 flex flex-col gap-3">
         {category.items.map((item) => (
           <li key={item.id}>
-            <MenuItemCard item={item} />
+            <MenuItemCard item={item} categoryName={category.name} />
           </li>
         ))}
       </ul>

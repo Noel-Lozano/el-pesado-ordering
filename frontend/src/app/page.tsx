@@ -1,3 +1,4 @@
+import { CartBar } from "@/components/cart/CartBar";
 import { CategorySection } from "@/components/menu/CategorySection";
 import { getMenu } from "@/lib/api";
 import { strings } from "@/lib/strings";
@@ -42,11 +43,13 @@ export default async function MenuPage() {
             </ul>
           </nav>
 
-          <main className="flex flex-col gap-8 px-4 py-6">
+          {/* Bottom padding leaves room for the fixed CartBar so it never covers the last item. */}
+          <main className="flex flex-col gap-8 px-4 pb-28 pt-6">
             {menu.categories.map((category, index) => (
               <CategorySection key={category.name} category={category} anchorId={categoryAnchorId(index)} />
             ))}
           </main>
+          <CartBar />
         </>
       )}
     </div>
