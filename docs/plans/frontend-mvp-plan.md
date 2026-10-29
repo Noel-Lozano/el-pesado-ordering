@@ -318,6 +318,13 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
   - **Category on cart lines:** `CartLine` also stores `categoryName`. 17 names appear in both Burritos and Montadas (for example "Frijoles con queso"). Without the category, two lines would look identical in the cart, and their screen-reader labels would be the same. Lines are still keyed by `menuItemId` only.
   - **Pure cart logic:** the reducer and storage parsing live in `context/cartReducer.ts` and `context/cartStorage.ts`, so they can be tested without React. `CartContext.tsx` is the thin React wrapper around them.
   - **Quantity cap:** each line is capped at 20 (`MAX_QUANTITY_PER_LINE`), the same limit the server will enforce in slice 4.
+- **Found during slice 3:**
+  - **Fresh menu at checkout:** `/checkout` fetches `GET /menu` in the browser. That gives it the shop hours and each item's `availableFrom` (the cart doesn't store them), and lets it list cart items that were taken off the menu. The submit button stays disabled until those items are removed.
+  - **Closed hours:** the form isn't shown while the shop is closed, which includes before 7:30 AM. Following the "same-day only, no orders 3:30 PM–7:30 AM" decision, nobody can schedule a 7:30 pickup at 6 AM.
+  - **Shop time, not device time:** all pickup times are computed in `America/Ciudad_Juarez`, whatever the device's timezone is. This was tested with a browser set to Los Angeles time.
+  - **UUID fallback:** `lib/uuid.ts` falls back to `crypto.getRandomValues` when `crypto.randomUUID` isn't available. `randomUUID` needs HTTPS or localhost, so testing from a phone over plain HTTP on the LAN would otherwise break.
+  - **Add button waits for the cart:** "Agregar" is disabled until the saved cart has loaded. Before that, a tap was either lost (handlers not attached yet) or overwritten when the saved cart loaded.
+  - **ASAP near closing:** ASAP is allowed until 3:29 PM, so an order placed at 3:29 would be ready after closing. *Open: should there be a last-order cutoff?*
 
 ## 6. Verification (overall)
 

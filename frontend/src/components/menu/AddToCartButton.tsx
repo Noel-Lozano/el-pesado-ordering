@@ -13,7 +13,7 @@ interface AddToCartButtonProps {
 // Shows "Agregar" until the item is in the cart, then becomes a stepper so
 // quantity can be changed without leaving the menu.
 export function AddToCartButton({ item, categoryName }: AddToCartButtonProps) {
-  const { lines, addItem, setQuantity } = useCart();
+  const { lines, hasLoaded, addItem, setQuantity } = useCart();
   const line = lines.find((cartLine) => cartLine.menuItemId === item.id);
   const itemLabel = strings.cart.itemLabel(item.name, categoryName);
 
@@ -25,8 +25,11 @@ export function AddToCartButton({ item, categoryName }: AddToCartButtonProps) {
       <button
         type="button"
         onClick={add}
+        // Disabled until the saved cart is read: a tap before then would be
+        // lost (not hydrated yet) or overwritten when the saved cart loads.
+        disabled={!hasLoaded}
         aria-label={strings.cart.addLabel(itemLabel)}
-        className="min-h-11 rounded-full bg-red-700 px-5 font-semibold text-white active:bg-red-800"
+        className="min-h-11 rounded-full bg-red-700 px-5 font-semibold text-white active:bg-red-800 disabled:opacity-60"
       >
         {strings.cart.add}
       </button>

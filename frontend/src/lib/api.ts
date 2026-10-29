@@ -78,15 +78,18 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
     requestHeaders.Authorization = `Bearer ${token}`;
   }
 
+  const url = getApiBaseUrl() + path;
   let response: Response;
   try {
-    response = await fetch(getApiBaseUrl() + path, {
+    response = await fetch(url, {
       method,
       headers: requestHeaders,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(0, NETWORK_ERROR_CODE, "Could not reach the server");
+    // Usually the API isn't running or NEXT_PUBLIC_API_BASE_URL points at the
+    // wrong host; naming the URL makes that obvious in logs.
+    throw new ApiError(0, NETWORK_ERROR_CODE, `Could not reach the server at ${url}`);
   }
 
   if (!response.ok) {
@@ -101,4 +104,9 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
 
 export function getMenu(): Promise<MenuResponse> {
   return apiFetch<MenuResponse>("/menu");
+}
+
+// Sends a 6-digit OTP by SMS. phone must already be E.164.
+export function sendCode(phone: string): Promise<{ status: "sent" }> {
+  return apiFetch<{ status: "sent" }>("/auth/send-code", { method: "POST", body: { phone } });
 }
