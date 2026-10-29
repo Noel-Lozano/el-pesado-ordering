@@ -11,6 +11,13 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
   OTP_EXPIRY_MINUTES: z.coerce.number().int().positive().default(5),
   OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  // Comma-separated list of frontend origins allowed to call the API from a
+  // browser, e.g. "http://localhost:3000,https://elpesado.vercel.app".
+  CORS_ORIGINS: z
+    .string()
+    .min(1, "CORS_ORIGINS is required")
+    .transform((value) => value.split(",").map((origin) => origin.trim()))
+    .pipe(z.array(z.url("Each CORS_ORIGINS entry must be a full origin URL"))),
 });
 
 const parsed = envSchema.safeParse(process.env);

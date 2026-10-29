@@ -33,5 +33,7 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["node_modules", "dist", "migrations"]
+  // scripts/ is run with tsx and not built into dist; it's typechecked by
+  // tsconfig.scripts.json instead, since it lives outside rootDir.
+  "exclude": ["node_modules", "dist", "migrations", "scripts"]
 }

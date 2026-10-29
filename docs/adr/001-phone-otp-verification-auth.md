@@ -1,4 +1,4 @@
-# ADR-0001: Phone OTP verification with short-lived JWTs for order authentication
+# ADR-001: Phone OTP verification with short-lived JWTs for order authentication
 
 **Status:** Accepted
 
