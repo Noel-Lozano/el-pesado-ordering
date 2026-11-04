@@ -25,7 +25,7 @@ Customer app (Web/PWA)  ──┐
 Store screen (staff)   ──┘        │        │
                                    │        └──▶ Object storage (menu images)
                                    └──▶ Stripe (card / OXXO / bank transfer)
-                                   └──▶ SMS provider (OTP + notifications)
+                                   └──▶ Twilio Verify (WhatsApp OTP)
 ```
 
 - **Customer app** — Next.js (React), deployed as a PWA. No native app.
@@ -50,12 +50,13 @@ Store screen (staff)   ──┘        │        │
   involvement); staff accept either MXN or USD cash in person, at
   whatever rate the shop is posting that day — this is a physical,
   at-the-register transaction, not something the app calculates.
-- **SMS** — Twilio for phone OTP verification and order-status
-  notifications (confirmed / ready / pickup reminder). Phone numbers are
-  stored in E.164 format (`+52...` / `+1...`) since the customer base
-  includes both Mexican and American numbers. US-bound SMS requires
-  A2P 10DLC registration with Twilio before launch, separate from
-  whatever's required for Mexican numbers.
+- **Phone verification** — Twilio Verify sends the OTP over WhatsApp
+  only, with no SMS (ADR-003). That needs the shop's own WhatsApp sender,
+  on a Meta-verified WhatsApp Business Account, attached to the Verify
+  service. Phone numbers are stored in E.164 format (`+52...` /
+  `+1...`) since the customer base includes both Mexican and American
+  numbers. Order status is not pushed by message: the customer's live
+  status page polls for it (ADR-002 decision 9).
 - **Hosting** — split by concern rather than one platform for everything:
   - Frontend (Next.js) → **Vercel** (best-in-class Next.js delivery,
     free at this scale).
@@ -110,8 +111,8 @@ Key decisions embedded in this schema:
 ## 4. Order flow (high level)
 
 1. Customer selects items + pickup time (ASAP or scheduled).
-2. Phone number is verified via SMS OTP (device remembered after first
-   verification to reduce repeat friction).
+2. Phone number is verified via an OTP sent over WhatsApp (ADR-003)
+   (device remembered after first verification to reduce repeat friction).
 3. Backend checks the relevant `capacity_slots` row for availability
    **before** payment is attempted, using `SELECT ... FOR UPDATE` inside a
    transaction to prevent two simultaneous requests from overbooking the
@@ -124,7 +125,8 @@ Key decisions embedded in this schema:
      staff mark it paid at handoff.
 5. Confirmed order is pushed to the store screen (WebSocket) and saved to
    Postgres regardless of socket delivery.
-6. Kitchen prepares; customer gets an SMS when ready.
+6. Kitchen prepares; the customer's status page (polling every 15 s)
+   shows when the order is ready.
 7. At pickup, staff match the order by name + last 4 digits of phone
    (name alone is not reliable — collisions happen).
 8. If a scheduled cash order isn't collected within a grace period after
@@ -154,7 +156,8 @@ most exposed to no-shows. Mitigations, in order of what's built first:
    is disabled for that customer (they can still order with card/OXXO).
 3. Grace period auto-release of unpicked scheduled orders, freeing the
    capacity slot.
-4. SMS pickup reminder to reduce *accidental* no-shows.
+4. (Deferred by ADR-003) a pickup reminder message to reduce *accidental*
+   no-shows. For now the live status page is the only reminder.
 5. (Reserved, not built initially) small non-refundable deposit for cash
    orders, if no-show rates prove to be a real problem once we have data.
 

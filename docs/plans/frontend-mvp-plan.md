@@ -94,7 +94,7 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
 13. **Tests.** coding_standards §8 requires unit tests for price calculation, and integration tests for the order flow.
     → **Add Vitest to both packages.** It covers unit tests for `phone`, `money`, `cartReducer`, `pickup`, and the backend `computeOrderTotal`. A DB-backed integration test of the order flow needs a test database, so I'll ask before setting one up.
 14. **Nothing moves an order past `created` yet,** because there's no kitchen screen. The order page will show "Recibido" until a status is changed by hand in the database. That's acceptable for the MVP.
-15. **`POST /auth/send-code` has no rate limit.** Repeated sends cost money in Twilio SMS. Flagged but not in scope.
+15. **`POST /auth/send-code` has no rate limit.** Repeated sends cost money. *Resolved by ADR-003:* Twilio Verify enforces send rate limits and fraud protection.
 16. **File name.** The ADR file is `docs/adr/002-frontend-architecture` and has no `.md`.
     → I'll rename it to `.md` in slice 1 unless you'd rather keep it.
 17. **⚠ RLS is disabled on every table.**
@@ -122,6 +122,10 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
 - **Open Question 6, the 5 hand-entered rows:** delete them, then run the seed with `--dry-run`, then run it for real.
 - **Open Question 10, timezone:** `SHOP_TIMEZONE = "America/Ciudad_Juarez"`. Hours are Monday–Saturday, 07:30–15:30, closed Sunday (decided 2026-10-28). That leaves "Después de las 2 PM" items orderable only from 14:00 to 15:30.
 - **Same-day pickup only (decided 2026-10-28).** There is no ordering ahead for the next open day. On Sunday, and from 3:30 PM until 7:30 AM, the app shows "Estamos cerrados" and doesn't take orders. Revisit if after-hours demand shows up.
+- **WhatsApp codes, no SMS (decided 2026-10-29, ADR-003).** Codes are sent by Twilio Verify with `channel=whatsapp` only. Verify's SMS fallback is an account-level pilot that has to be requested from Twilio, so by default no SMS is sent. Customers without WhatsApp can't order online.
+  - Verify replaces our own code generation, so the `otp_codes` table, the hashing, `OTP_EXPIRY_MINUTES`, and `OTP_MAX_ATTEMPTS` all go away.
+  - **Before launch:** Meta business verification, a WhatsApp sender, and that sender attached to the Verify service.
+- **No status messages; the live status page is the notification (decided 2026-10-29).** The page polls every 15 s. When the status becomes `ready`, it shows a large "¡Tu pedido está listo!" banner, changes the tab title, and calls `navigator.vibrate` if the page is open. It doesn't use browser notification permission.
 - **Open Question 2, JWT expiry:** `VERIFIED_PHONE_TOKEN_EXPIRY = "24h"`. ADR-001 gets a note that its expiry clause is superseded by ADR-002.
 
 ## 3. Slices
@@ -217,13 +221,28 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
 - Tests: `phone.test.ts` and `pickup.test.ts`.
 
 **Acceptance criteria**
-- Entering `664 123 4567` with MX selected produces `+526641234567`, and the SMS arrives.
+- Entering `664 123 4567` with MX selected produces `+526641234567`, and the code arrives on WhatsApp (after the slice 4 switch to Verify).
 - A US number works with `+1`.
 - An invalid number shows an inline error, and nothing is sent.
 
 ### Slice 4: Verify and create the order
 
 **Backend**
+- **Switch auth to Twilio Verify over WhatsApp (ADR-003).** The paths and response shapes stay the same, so the frontend doesn't change.
+  - `POST /auth/send-code` calls `client.verify.v2.services(TWILIO_VERIFY_SERVICE_SID).verifications.create({ to, channel: "whatsapp" })`.
+  - `POST /auth/verify-code` calls `verificationChecks.create({ to, code })`.
+    - On `status === "approved"`, it upserts the customer and issues the JWT, as today.
+    - Any other status returns `invalid_code` (400).
+  - Twilio error mapping:
+    - too many check attempts → `too_many_attempts` (429)
+    - too many send attempts → `too_many_requests` (429)
+    - verification not found or expired → `invalid_code`
+    - invalid number → `validation_error`
+    - anything else → `internal_error`, logged with the phone masked
+  - JWT expiry goes from `15m` to `24h` (Open Question 2).
+  - Env: add `TWILIO_VERIFY_SERVICE_SID`, and remove `TWILIO_PHONE_NUMBER`, `OTP_EXPIRY_MINUTES`, and `OTP_MAX_ATTEMPTS`.
+  - The Verify service must be configured for 6-digit codes, to match the existing validation.
+  - `backend/migrations/06_drop-otp-codes.ts` drops `otp_codes`, which is empty. Its down migration recreates the table as in `02`.
 - `backend/migrations/05_order-idempotency.ts` (04 is the RLS migration):
   ```sql
   ALTER TABLE orders ADD COLUMN idempotency_key uuid;
@@ -249,7 +268,7 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
 
 **Frontend**
 - `src/types/order.ts`: `Order`, `OrderStatus`, `CreateOrderRequest`.
-- `src/components/checkout/OtpInput.tsx`: 6 digits, `inputMode="numeric"`, and `autoComplete="one-time-code"` so iOS and Android can fill the code from the SMS.
+- `src/components/checkout/OtpInput.tsx`: 6 digits, `inputMode="numeric"`, and `autoComplete="one-time-code"`. The code arrives on WhatsApp, whose copy-code button puts it on the clipboard, so the input accepts a paste and strips anything that isn't a digit. Copy: "Te enviamos un código por WhatsApp al •••• 4567".
 - `src/app/checkout/verify/page.tsx`:
   1. Call `verifyCode`, then `setToken`.
   2. Call `createOrder(cart, draft)` with the draft's idempotency key.
@@ -273,6 +292,12 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
 - `src/app/orders/[id]/page.tsx` is a client component that gets the id with `useParams`.
 - It polls `getOrder` every 15 s and pauses when the tab is hidden (`visibilitychange`).
 - It stops polling at the terminal statuses `picked_up`, `no_show`, and `cancelled`.
+- **Ready alert:** when a poll first sees `ready`, the page:
+  - shows a full-width "¡Tu pedido está listo!" banner;
+  - sets `document.title` to "✅ ¡Listo! · Burritos El Pesado";
+  - calls `navigator.vibrate([200, 100, 200])` where supported (iOS Safari doesn't support it, so it's skipped there).
+  - It fires only on the transition, not on every poll, and not if the page first loads with the order already ready.
+- The page keeps a visible "Mantén esta página abierta para saber cuándo esté listo" hint until the order is ready.
 - It shows the status in Spanish, the items, the total, the pickup time, and "Paga en efectivo al recoger" ("pay cash at pickup").
 
 **Acceptance criteria**
@@ -296,7 +321,8 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
 |---|---|---|
 | frontend `.env` | `NEXT_PUBLIC_API_BASE_URL` | API origin only, e.g. `http://localhost:4000`. Inlined at build time, so set it in Vercel before building. |
 | backend `.env` | `CORS_ORIGINS` | **new**, e.g. `http://localhost:3000,https://<vercel-app>` |
-| backend `.env` | existing: `DATABASE_URL`, `JWT_SECRET`, `TWILIO_*`, `STRIPE_SECRET_KEY`, `OTP_*` | `STRIPE_SECRET_KEY` is still required; any placeholder value works for local dev |
+| backend `.env` | `TWILIO_VERIFY_SERVICE_SID` | **new in slice 4**, the Verify service with the WhatsApp sender attached. `TWILIO_PHONE_NUMBER` and `OTP_*` are removed. |
+| backend `.env` | existing: `DATABASE_URL`, `JWT_SECRET`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `STRIPE_SECRET_KEY` | `STRIPE_SECRET_KEY` is still required; any placeholder value works for local dev |
 
 ## 5. Deviations from the spec
 
@@ -329,5 +355,5 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
 ## 6. Verification (overall)
 
 - Each slice has its own acceptance criteria and passes `npm run lint`, `npx tsc --noEmit`, and `npx vitest run` in each package it touches.
-- After slice 5, an end-to-end pass on a real phone over cellular data: browse, add 3 items with a note, check out with ASAP, enter the OTP from the SMS, then see the confirmation, change the order status in the database, and watch the page update.
+- After slice 5, an end-to-end pass on a real phone over cellular data: browse, add 3 items with a note, check out with ASAP, enter the OTP from WhatsApp, then see the confirmation, change the order status in the database, and watch the page update.
 - Commits follow imperative messages on `frontend-customer-flow`. Schema and backend changes stay in their own commits.

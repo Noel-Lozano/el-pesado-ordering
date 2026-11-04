@@ -11,7 +11,7 @@
 
 ## Context
 
-Burritos El Pesado needs mobile-first online ordering. Most customers are university students near the Mexico–US border who order from their phones, often on weak signal. For the MVP, payment is cash at pickup, so nothing financial discourages fake or no-show orders. The backend (Express + Supabase) already provides OTP auth over Twilio SMS and JWT middleware. The frontend is Next.js (App Router), deployed to Vercel, while the API runs on a different domain (Railway or Render).
+Burritos El Pesado needs mobile-first online ordering. Most customers are university students near the Mexico–US border who order from their phones, often on weak signal. For the MVP, payment is cash at pickup, so nothing financial discourages fake or no-show orders. The backend (Express + Supabase) already provides phone OTP auth and JWT middleware; per ADR-003 the code is delivered over WhatsApp by Twilio Verify. The frontend is Next.js (App Router), deployed to Vercel, while the API runs on a different domain (Railway or Render).
 
 The main forces behind these decisions are:
 - **Conversion:** every step before a customer sees the menu costs orders.
@@ -29,7 +29,7 @@ The flow is Menu → Cart → Checkout → OTP Verify → Confirmation. There ar
 **Alternatives considered:** Login before browsing was rejected because it adds friction before the customer sees any value. Guest checkout with no verification was rejected because, with cash payment, fake orders would cost the shop food.
 
 ### 2. Real routes instead of modals or drawers
-Each step is its own route. The mobile back button, page refresh, and deep links (an SMS linking to `/orders/[id]`) all behave predictably.
+Each step is its own route. The mobile back button, page refresh, and deep links (a shared link to `/orders/[id]`) all behave predictably.
 
 **Alternative considered:** A cart drawer and checkout modal. They offer smoother UX, but back-button and refresh behavior are fragile. They can be revisited after the MVP.
 
@@ -59,8 +59,8 @@ Each cart line has a note of at most 140 characters, which the kitchen reads the
 
 **Revisit when:** customers frequently request paid customizations that notes can't handle.
 
-### 9. Order status via polling every 15 seconds, with SMS as the primary notification
-Polling is simple and easy to debug, and it is adequate at this shop's order volume.
+### 9. Order status via polling every 15 seconds on a live status page, which is the only notification
+Polling is simple and easy to debug, and it is adequate at this shop's order volume. No SMS or WhatsApp status messages are sent (ADR-003). When the order becomes ready, the page shows a prominent banner, changes the tab title, and vibrates the phone if the page is open.
 
 **Alternative considered:** Supabase Realtime or websockets. They are more responsive but add connection handling that the MVP doesn't need.
 
@@ -82,13 +82,14 @@ Keeping every UI string in one file means adding English later is a new file, no
 
 **Negative / accepted risks**
 - The JWT in `localStorage` is exposed to XSS, as described in decision 6.
-- Returning customers must re-verify by OTP every time, and each verification incurs a Twilio SMS cost.
+- Returning customers must re-verify by OTP every time, and each verification incurs a Twilio Verify plus WhatsApp cost.
+- Customers only see that their order is ready while the status page is open.
 - Order status can lag by up to 15 seconds.
 - Notes are unstructured, so the kitchen has to interpret them.
 
 **Follow-ups**
 - [ ] Custom domain, then migrate the JWT to an httpOnly cookie
-- [ ] Twilio A2P 10DLC registration before launch
+- [ ] Meta business verification and a WhatsApp sender attached to the Twilio Verify service, before launch (ADR-003)
 - [ ] Set Discada's price
 - [ ] Stripe Mexico (Phase 3), which will change the checkout and verify steps
 

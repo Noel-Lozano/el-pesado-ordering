@@ -47,7 +47,7 @@ export const strings = {
     nameLabel: "Tu nombre",
     nameHint: "Lo usamos para entregarte tu pedido.",
     phoneLabel: "Tu celular",
-    phoneHint: "Te enviaremos un código por SMS para confirmar tu pedido.",
+    phoneHint: "Te enviaremos un código por WhatsApp para confirmar tu pedido.",
     phonePlaceholder: { MX: "656 123 4567", US: "915 555 1234" },
     countryGroupLabel: "País del número",
     countryOption: { MX: "MX +52", US: "US +1" },
@@ -59,7 +59,7 @@ export const strings = {
     pickupNoSlots: "Ya no hay horarios disponibles hoy.",
     pickupAvailableFromNote: (time: string) =>
       `Tu pedido incluye productos disponibles después de las ${time}, así que la recogida es a partir de esa hora.`,
-    submit: "Enviar código",
+    submit: "Enviar código por WhatsApp",
     submitting: "Enviando…",
     backToCart: "Volver al carrito",
     closedTitle: "Estamos cerrados",

@@ -1,6 +1,10 @@
 # ADR-001: Phone OTP verification with short-lived JWTs for order authentication
 
-**Status:** Accepted
+**Status:** Accepted, partly superseded. Code generation and SMS delivery
+(the `otp_codes` table, hashing, and attempt limits) are superseded by
+ADR-003 (Twilio Verify over WhatsApp). The 15-minute JWT expiry is
+superseded by ADR-002 decision 6 (about 24h). The JWT design itself
+(`customerId` token, `requireVerifiedPhone`) remains in force.
 
 **Date:** 2026-08-26
 

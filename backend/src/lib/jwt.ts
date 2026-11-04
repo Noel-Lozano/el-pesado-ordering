@@ -1,7 +1,9 @@
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 
-const VERIFIED_PHONE_TOKEN_EXPIRY = "15m";
+// Long enough for the order status page to keep polling while the order is
+// prepared (ADR-002 decision 6; supersedes ADR-001's 15 minutes).
+const VERIFIED_PHONE_TOKEN_EXPIRY = "24h";
 
 export interface VerifiedPhoneTokenPayload {
   customerId: number;

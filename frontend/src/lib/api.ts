@@ -106,7 +106,7 @@ export function getMenu(): Promise<MenuResponse> {
   return apiFetch<MenuResponse>("/menu");
 }
 
-// Sends a 6-digit OTP by SMS. phone must already be E.164.
+// Sends a 6-digit OTP over WhatsApp (Twilio Verify, ADR-003). phone must already be E.164.
 export function sendCode(phone: string): Promise<{ status: "sent" }> {
   return apiFetch<{ status: "sent" }>("/auth/send-code", { method: "POST", body: { phone } });
 }
