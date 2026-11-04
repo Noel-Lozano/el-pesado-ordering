@@ -33,7 +33,16 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  // scripts/ is run with tsx and not built into dist; it's typechecked by
-  // tsconfig.scripts.json instead, since it lives outside rootDir.
-  "exclude": ["node_modules", "dist", "migrations", "scripts"]
+  // scripts/, tests, and vitest configs are not built into dist; they're
+  // typechecked by tsconfig.scripts.json instead (scripts/ and the configs
+  // also live outside rootDir).
+  "exclude": [
+    "node_modules",
+    "dist",
+    "migrations",
+    "scripts",
+    "vitest*.config.ts",
+    "src/**/*.test.ts",
+    "src/test"
+  ]
 }
