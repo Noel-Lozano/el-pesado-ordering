@@ -1,4 +1,5 @@
 import type { MenuResponse } from "@/types/menu";
+import type { CreateOrderRequest, Order } from "@/types/order";
 
 // Every network call in the app goes through this file. Components never call
 // fetch directly, so base URL, auth header, error shape, and 401 handling live
@@ -109,4 +110,20 @@ export function getMenu(): Promise<MenuResponse> {
 // Sends a 6-digit OTP over WhatsApp (Twilio Verify, ADR-003). phone must already be E.164.
 export function sendCode(phone: string): Promise<{ status: "sent" }> {
   return apiFetch<{ status: "sent" }>("/auth/send-code", { method: "POST", body: { phone } });
+}
+
+// Exchanges the code for a JWT tied to this phone's customer record.
+export function verifyCode(phone: string, code: string): Promise<{ token: string }> {
+  return apiFetch<{ token: string }>("/auth/verify-code", { method: "POST", body: { phone, code } });
+}
+
+// The same idempotencyKey must be sent on every retry of one checkout so the
+// server returns the original order instead of creating a duplicate.
+export function createOrder(request: CreateOrderRequest, token: string, idempotencyKey: string): Promise<Order> {
+  return apiFetch<Order>("/orders", {
+    method: "POST",
+    body: request,
+    token,
+    headers: { "Idempotency-Key": idempotencyKey },
+  });
 }
