@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type SubmitEvent, useEffect, useState } from "react";
 import { OTP_LENGTH, OtpInput } from "@/components/checkout/OtpInput";
 import { useAuth } from "@/context/AuthContext";
 import { type CartLine, getCartTotals } from "@/context/cartReducer";
@@ -74,7 +74,7 @@ export function VerifyForm({ draft, lines, onOrderPlaced }: VerifyFormProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   // Kept after verification so "retry" can resubmit the order without a new code.
-  const verifiedTokenRef = useRef<string | null>(null);
+  const [verifiedToken, setVerifiedToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -99,7 +99,7 @@ export function VerifyForm({ draft, lines, onOrderPlaced }: VerifyFormProps) {
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isBusy) return;
     if (code.length !== OTP_LENGTH) {
@@ -119,7 +119,7 @@ export function VerifyForm({ draft, lines, onOrderPlaced }: VerifyFormProps) {
       return;
     }
     setToken(token, draft.phone);
-    verifiedTokenRef.current = token;
+    setVerifiedToken(token);
     await placeOrder(token);
   }
 
@@ -141,7 +141,7 @@ export function VerifyForm({ draft, lines, onOrderPlaced }: VerifyFormProps) {
   const secondaryLinkClass = "flex min-h-11 items-center justify-center font-medium underline underline-offset-4";
 
   if (phase === "orderFailed" && failure) {
-    const token = verifiedTokenRef.current;
+    const token = verifiedToken;
     return (
       <div className="flex flex-col gap-4">
         <p role="alert" className="rounded-xl bg-red-50 p-4 font-medium text-red-900 dark:bg-red-950 dark:text-red-100">

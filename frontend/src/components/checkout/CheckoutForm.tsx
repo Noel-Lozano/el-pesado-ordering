@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type SubmitEvent, useState } from "react";
 import { PhoneInput } from "@/components/checkout/PhoneInput";
 import { PickupTimePicker } from "@/components/checkout/PickupTimePicker";
 import { type CartLine, getCartTotals } from "@/context/cartReducer";
@@ -114,7 +114,7 @@ export function CheckoutForm({ menu, lines }: CheckoutFormProps) {
 
   const { itemCount, subtotalCents } = getCartTotals(lines);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const trimmedName = name.trim();

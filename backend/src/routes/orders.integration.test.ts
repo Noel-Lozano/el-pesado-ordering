@@ -53,6 +53,14 @@ const asapBurrito = () => ({
   items: [{ menuItemId: burrito.id, quantity: 2, notes: "sin cebolla", unitPriceCents: 1 }],
 });
 
+// Tokens last 24h, so a test that jumps the clock days ahead needs a token
+// issued at that time.
+async function tokenIssuedAt(instant: Date): Promise<string> {
+  vi.setSystemTime(instant);
+  const res = await request(app).post("/api/v1/auth/verify-code").send({ phone: TEST_PHONE, code: "123456" });
+  return res.body.token as string;
+}
+
 async function countOrders(): Promise<number> {
   const { rows } = await pool.query<{ n: number }>(
     `SELECT count(*)::int AS n FROM orders o JOIN customers c ON c.id = o.customer_id WHERE c.phone = $1`,
@@ -166,8 +174,8 @@ describe("POST /orders", () => {
   it("replays an existing order even after the shop has closed", async () => {
     const key = randomUUID();
     const created = await postOrder(asapBurrito(), key);
-    vi.setSystemTime(SUNDAY_1000);
-    const replay = await postOrder(asapBurrito(), key);
+    const sundayToken = await tokenIssuedAt(SUNDAY_1000);
+    const replay = await postOrder(asapBurrito(), key, sundayToken);
     expect(replay.status).toBe(200);
     expect(replay.body.id).toBe(created.body.id);
   });
@@ -179,8 +187,8 @@ describe("POST /orders", () => {
   });
 
   it("rejects new orders while the shop is closed", async () => {
-    vi.setSystemTime(SUNDAY_1000);
-    const res = await postOrder(asapBurrito());
+    const sundayToken = await tokenIssuedAt(SUNDAY_1000);
+    const res = await postOrder(asapBurrito(), randomUUID(), sundayToken);
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("shop_closed");
   });
