@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { type SubmitEvent, useState } from "react";
 import { PhoneInput } from "@/components/checkout/PhoneInput";
 import { PickupTimePicker } from "@/components/checkout/PickupTimePicker";
+import { useAuth } from "@/context/AuthContext";
 import { type CartLine, getCartTotals } from "@/context/cartReducer";
 import { useNow } from "@/hooks/useNow";
 import { ApiError, sendCode } from "@/lib/api";
 import { loadCheckoutDraft, saveCheckoutDraft } from "@/lib/checkoutDraft";
+import { isTokenUsable } from "@/lib/jwt";
 import { formatMXN } from "@/lib/money";
-import { normalizePhone, type PhoneCountry } from "@/lib/phone";
+import { normalizePhone, type PhoneCountry, splitE164 } from "@/lib/phone";
 import {
   getNextOpening,
   getScheduledSlots,
@@ -59,13 +61,16 @@ interface CheckoutFormProps {
 export function CheckoutForm({ menu, lines }: CheckoutFormProps) {
   const router = useRouter();
   const now = useNow();
+  const auth = useAuth();
 
   // Mounted only on the client (see CheckoutView), so reading sessionStorage
   // in the initial state is safe and refills the form after "back" from verify.
+  // Without a draft, a returning customer's verified phone is prefilled.
   const [savedDraft] = useState(loadCheckoutDraft);
+  const [rememberedPhone] = useState(() => (auth.phone ? splitE164(auth.phone) : null));
   const [name, setName] = useState(savedDraft?.name ?? "");
-  const [country, setCountry] = useState<PhoneCountry>(savedDraft?.country ?? "MX");
-  const [phoneInput, setPhoneInput] = useState(savedDraft?.phoneInput ?? "");
+  const [country, setCountry] = useState<PhoneCountry>(savedDraft?.country ?? rememberedPhone?.country ?? "MX");
+  const [phoneInput, setPhoneInput] = useState(savedDraft?.phoneInput ?? rememberedPhone?.nationalNumber ?? "");
   const [selectedPickup, setSelectedPickup] = useState<Pickup | null>(savedDraft?.pickup ?? null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -138,9 +143,16 @@ export function CheckoutForm({ menu, lines }: CheckoutFormProps) {
       return;
     }
 
+    // A returning customer whose login for this same phone is still good
+    // skips the WhatsApp code (decided 2026-11-04). If the server rejects the
+    // token anyway, the 401 handler brings them back here to get a code.
+    const canSkipCode = auth.token !== null && auth.phone === phone && isTokenUsable(auth.token, new Date());
+
     setIsSubmitting(true);
     try {
-      await sendCode(phone);
+      if (!canSkipCode) {
+        await sendCode(phone);
+      }
       saveCheckoutDraft({
         name: trimmedName,
         country,

@@ -3,6 +3,9 @@
 
 export type OrderStatus = "created" | "confirmed" | "preparing" | "ready" | "picked_up" | "no_show" | "cancelled";
 
+// Statuses after which nothing else will change, so polling stops.
+export const TERMINAL_ORDER_STATUSES: readonly OrderStatus[] = ["picked_up", "no_show", "cancelled"];
+
 export interface OrderItem {
   menuItemId: number;
   name: string;
@@ -17,6 +20,8 @@ export interface Order {
   status: OrderStatus;
   fulfillmentType: "asap" | "scheduled";
   requestedTime: string | null;
+  // requestedTime as "HH:MM" in the shop's timezone.
+  requestedClockTime: string | null;
   estimatedReadyAt: string | null;
   paymentMethod: string;
   paymentStatus: string;

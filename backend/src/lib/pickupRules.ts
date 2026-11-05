@@ -47,6 +47,14 @@ export function getShopClock(instant: Date): ShopClock {
   };
 }
 
+// "14:15" for an instant, in the shop's timezone.
+export function toShopClockTime(instant: Date): string {
+  const { minutesSinceMidnight } = getShopClock(instant);
+  const hours = Math.floor(minutesSinceMidnight / MINUTES_PER_HOUR);
+  const minutes = minutesSinceMidnight % MINUTES_PER_HOUR;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
 export function clockTimeToMinutes(hhmm: string): number {
   const [hours, minutes] = hhmm.split(":").map(Number);
   return (hours ?? 0) * MINUTES_PER_HOUR + (minutes ?? 0);

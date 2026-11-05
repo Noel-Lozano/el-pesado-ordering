@@ -351,6 +351,29 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
   - **UUID fallback:** `lib/uuid.ts` falls back to `crypto.getRandomValues` when `crypto.randomUUID` isn't available. `randomUUID` needs HTTPS or localhost, so testing from a phone over plain HTTP on the LAN would otherwise break.
   - **Add button waits for the cart:** "Agregar" is disabled until the saved cart has loaded. Before that, a tap was either lost (handlers not attached yet) or overwritten when the saved cart loaded.
   - **ASAP near closing:** ASAP is allowed until 3:29 PM, so an order placed at 3:29 would be ready after closing. *Open: should there be a last-order cutoff?*
+- **Found during slice 4:**
+  - **2 PM check in code, not SQL:** the `available_from` rule runs in `backend/src/lib/pickupRules.ts` (unit tested) instead of the Postgres comparison sketched in Open Question 18. Same rule, easier to test.
+  - **Orders only while open:** the server accepts orders only while the shop is open, including scheduled ones. This matches the frontend.
+  - **New error codes:**
+    - `shop_closed` (409), `invalid_pickup_time` (400), `item_not_available_yet` (409)
+    - `payment_method_unavailable` (400)
+    - `too_many_requests` (429, Verify's send limits or fraud protection)
+    - `verification_unavailable` (502, any other Twilio failure, logged by Twilio error code only so no phone number appears)
+  - **Retries before closing-time checks:** an `Idempotency-Key` that was already used returns its order (200) before the hours check runs. A retry that arrives after closing still gets the order instead of `shop_closed`.
+  - **Category in order lines:** order lines in responses include `categoryName`, because names repeat across categories.
+  - **Structured logging:** order creation is logged as structured JSON (`order_status_changed`, from `null` to `created`) with the phone masked to `***1234` (`backend/src/lib/log.ts`).
+  - **Tests:** `backend/src/app.ts` now builds the Express app and `index.ts` only starts it, so tests can run the app without a port.
+    - `npm run test:integration` runs `orders.integration.test.ts` against `DATABASE_URL`, with Twilio mocked. It creates its own customer and orders and deletes them afterwards.
+    - `npm test` runs unit tests only.
+  - **Retry keeps the token:** after a successful code, a failed order can be retried with the same token and idempotency key, without a new code.
+  - **Not done:** blocked customers (`is_blocked`) are still not rejected (Open Question 9, optional).
+  - **Resolved (2026-11-04):** a returning customer within 24 hours skips the code (see slice 5 below).
+- **Found during slice 5:**
+  - **Skipping the code:** when the stored login belongs to the same phone and has at least 10 minutes left, checkout doesn't send a code and the verify page shows only "Confirmar pedido" (`frontend/src/lib/jwt.ts` reads the expiry; the server still verifies the token). The phone field is prefilled from the stored login. If the server rejects the token anyway, the app-wide 401 handler clears it and returns the customer to `/checkout`, and the next submit sends a code.
+  - **Shop-local pickup time:** order responses include `requestedClockTime` ("14:15" in shop time), so the status page doesn't need the shop's timezone.
+  - **401 on the status page (changes Open Question 11):** a 401 or a missing login shows "No podemos mostrar tu pedido aquí", which tells the customer to open the page on the phone they ordered from or give their name and last 4 digits at pickup. A link to `/checkout` would be a dead end, because the cart is empty after ordering. `getOrder` opts out of the app-wide 401 redirect.
+  - **Polling details:** an invalid order id (a 400 from the server) is shown as not found. When a poll fails, the last status stays on screen with a "Sin conexión" notice.
+  - **Progress bar:** the status page shows 4 steps (Recibido, Preparando, Listo, Entregado). `confirmed` counts as Recibido. `no_show` and `cancelled` show no progress bar.
 
 ## 6. Verification (overall)
 

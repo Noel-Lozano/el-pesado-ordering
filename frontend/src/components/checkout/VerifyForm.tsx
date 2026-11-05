@@ -62,10 +62,12 @@ function orderFailure(error: unknown): OrderFailure {
 interface VerifyFormProps {
   draft: CheckoutDraft;
   lines: CartLine[];
+  // A still-valid login for draft.phone: the customer skips the code.
+  rememberedToken: string | null;
   onOrderPlaced: (order: Order) => void;
 }
 
-export function VerifyForm({ draft, lines, onOrderPlaced }: VerifyFormProps) {
+export function VerifyForm({ draft, lines, rememberedToken, onOrderPlaced }: VerifyFormProps) {
   const { setToken } = useAuth();
   const [code, setCode] = useState("");
   const [phase, setPhase] = useState<Phase>("enterCode");
@@ -74,7 +76,9 @@ export function VerifyForm({ draft, lines, onOrderPlaced }: VerifyFormProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   // Kept after verification so "retry" can resubmit the order without a new code.
-  const [verifiedToken, setVerifiedToken] = useState<string | null>(null);
+  const [verifiedToken, setVerifiedToken] = useState<string | null>(rememberedToken);
+  // Decided once on mount, so saving a fresh token mid-flow doesn't switch views.
+  const [skipsCode] = useState(rememberedToken !== null);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -160,6 +164,28 @@ export function VerifyForm({ draft, lines, onOrderPlaced }: VerifyFormProps) {
         <Link href="/cart" className={failure.action === "cart" ? primaryButtonClass : secondaryLinkClass}>
           {strings.verify.goToCart}
         </Link>
+      </div>
+    );
+  }
+
+  if (skipsCode && verifiedToken) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1">
+          <p>{strings.verify.alreadyVerified(maskPhone(draft.phone))}</p>
+          <Link href="/checkout" className="self-start font-medium underline underline-offset-4">
+            {strings.verify.changeNumber}
+          </Link>
+        </div>
+        <p className="text-zinc-600 dark:text-zinc-400">{strings.verify.totalLine(formatMXN(subtotalCents))}</p>
+        <button
+          type="button"
+          onClick={() => placeOrder(verifiedToken)}
+          disabled={isBusy}
+          className={primaryButtonClass}
+        >
+          {phase === "placingOrder" ? strings.verify.placingOrder : strings.verify.submit}
+        </button>
       </div>
     );
   }

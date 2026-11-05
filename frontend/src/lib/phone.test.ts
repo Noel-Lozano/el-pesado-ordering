@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { maskPhone, normalizePhone } from "@/lib/phone";
+import { maskPhone, normalizePhone, splitE164 } from "@/lib/phone";
 
 describe("normalizePhone (MX)", () => {
   it("accepts a 10-digit national number with any formatting", () => {
@@ -45,5 +45,17 @@ describe("normalizePhone (US)", () => {
 describe("maskPhone", () => {
   it("shows only the last 4 digits", () => {
     expect(maskPhone("+526641234567")).toBe("•••• 4567");
+  });
+});
+
+describe("splitE164", () => {
+  it("splits +52 and +1 numbers back into country and national number", () => {
+    expect(splitE164("+526561234567")).toEqual({ country: "MX", nationalNumber: "6561234567" });
+    expect(splitE164("+19155552368")).toEqual({ country: "US", nationalNumber: "9155552368" });
+  });
+
+  it("returns null for other countries or lengths", () => {
+    expect(splitE164("+447700900123")).toBeNull();
+    expect(splitE164("+5265612345")).toBeNull();
   });
 });

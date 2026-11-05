@@ -29,6 +29,9 @@ interface ApiRequestOptions {
   // JWT from the OTP flow; sent as a Bearer token when present.
   token?: string | null;
   headers?: Record<string, string>;
+  // Whether a 401 runs the app-wide handler (clear login, go to /checkout).
+  // The order status page handles 401 itself, since checkout would be a dead end there.
+  redirectOnUnauthorized?: boolean;
 }
 
 type UnauthorizedHandler = () => void;
@@ -69,7 +72,7 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
-  const { method = "GET", body, token, headers = {} } = options;
+  const { method = "GET", body, token, headers = {}, redirectOnUnauthorized = true } = options;
 
   const requestHeaders: Record<string, string> = { Accept: "application/json", ...headers };
   if (body !== undefined) {
@@ -94,7 +97,7 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
   }
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 && redirectOnUnauthorized) {
       unauthorizedHandler?.();
     }
     throw await toApiError(response);
@@ -126,4 +129,9 @@ export function createOrder(request: CreateOrderRequest, token: string, idempote
     token,
     headers: { "Idempotency-Key": idempotencyKey },
   });
+}
+
+// Polled by the order status page. Its 401s are handled on that page.
+export function getOrder(orderId: string, token: string): Promise<Order> {
+  return apiFetch<Order>(`/orders/${encodeURIComponent(orderId)}`, { token, redirectOnUnauthorized: false });
 }

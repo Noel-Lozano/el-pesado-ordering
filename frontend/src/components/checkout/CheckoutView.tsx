@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
+import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { getMenu } from "@/lib/api";
 import { strings } from "@/lib/strings";
@@ -17,6 +18,8 @@ type MenuState = { status: "loading" } | { status: "error" } | { status: "ready"
 export function CheckoutView() {
   const router = useRouter();
   const { lines, hasLoaded } = useCart();
+  // The form prefills a returning customer's phone from the stored login.
+  const { hasLoaded: hasAuthLoaded } = useAuth();
   const [menuState, setMenuState] = useState<MenuState>({ status: "loading" });
 
   const loadMenu = useCallback(() => {
@@ -36,7 +39,7 @@ export function CheckoutView() {
     }
   }, [isCartEmpty, router]);
 
-  if (!hasLoaded || isCartEmpty || menuState.status === "loading") {
+  if (!hasLoaded || !hasAuthLoaded || isCartEmpty || menuState.status === "loading") {
     return <p className="py-12 text-center text-zinc-600 dark:text-zinc-400">{strings.checkout.loading}</p>;
   }
 

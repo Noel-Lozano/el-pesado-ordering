@@ -3,8 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { VerifyForm } from "@/components/checkout/VerifyForm";
+import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import { useNow } from "@/hooks/useNow";
 import { clearCheckoutDraft, loadCheckoutDraft } from "@/lib/checkoutDraft";
+import { isTokenUsable } from "@/lib/jwt";
 import { strings } from "@/lib/strings";
 import type { Order } from "@/types/order";
 
@@ -14,6 +17,8 @@ import type { Order } from "@/types/order";
 export function VerifyView() {
   const router = useRouter();
   const { lines, hasLoaded, clearCart } = useCart();
+  const auth = useAuth();
+  const now = useNow();
   const [placedOrderId, setPlacedOrderId] = useState<number | null>(null);
   // Read once the cart has loaded, i.e. on the client after mount.
   const draft = hasLoaded ? loadCheckoutDraft() : null;
@@ -38,9 +43,12 @@ export function VerifyView() {
   if (placedOrderId !== null) {
     return <p className="py-12 text-center text-lg font-semibold">{strings.verify.redirecting}</p>;
   }
-  if (!hasLoaded || redirectTo !== null || draft === null) {
+  if (!hasLoaded || !auth.hasLoaded || now === null || redirectTo !== null || draft === null) {
     return <p className="py-12 text-center text-zinc-600 dark:text-zinc-400">{strings.verify.loading}</p>;
   }
 
-  return <VerifyForm draft={draft} lines={lines} onOrderPlaced={handleOrderPlaced} />;
+  const rememberedToken =
+    auth.token !== null && auth.phone === draft.phone && isTokenUsable(auth.token, now) ? auth.token : null;
+
+  return <VerifyForm draft={draft} lines={lines} rememberedToken={rememberedToken} onOrderPlaced={handleOrderPlaced} />;
 }

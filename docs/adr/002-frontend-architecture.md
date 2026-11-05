@@ -45,7 +45,7 @@ Mobile browsers routinely kill background tabs, and losing a cart loses the sale
 Client-side prices are for display only. `POST /orders` recomputes all totals from the database and rejects inactive or unknown items. Otherwise, a customer could change the price in the browser.
 
 ### 6. JWT stored in `localStorage` (accepted tradeoff)
-The frontend (Vercel) and API (Railway or Render) are on different domains, which makes httpOnly cookies difficult because of cross-site cookie restrictions. For the MVP, the JWT is kept in `localStorage` with a short expiry of about 24h.
+The frontend (Vercel) and API (Railway or Render) are on different domains, which makes httpOnly cookies difficult because of cross-site cookie restrictions. For the MVP, the JWT is kept in `localStorage` with a short expiry of about 24h. While it's valid, a returning customer ordering with the same phone skips the WhatsApp code (the device is "remembered", `architecture.md` §4.2).
 
 **Risk:** a successful XSS attack could read the token. **Mitigations:** React escapes output by default, the app loads no third-party scripts, the token is short-lived, and it only grants access to that phone number's orders.
 
@@ -82,7 +82,7 @@ Keeping every UI string in one file means adding English later is a new file, no
 
 **Negative / accepted risks**
 - The JWT in `localStorage` is exposed to XSS, as described in decision 6.
-- Returning customers must re-verify by OTP every time, and each verification incurs a Twilio Verify plus WhatsApp cost.
+- Returning customers skip the code while their 24h token for the same phone is still valid (decided 2026-11-04). After that they verify again, and each verification incurs a Twilio Verify plus WhatsApp cost.
 - Customers only see that their order is ready while the status page is open.
 - Order status can lag by up to 15 seconds.
 - Notes are unstructured, so the kitchen has to interpret them.

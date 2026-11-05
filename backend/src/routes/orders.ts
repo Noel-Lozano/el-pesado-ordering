@@ -190,3 +190,20 @@ ordersRouter.post("/", requireVerifiedPhone, async (req, res, next) => {
     next(err);
   }
 });
+
+const orderIdParamSchema = z.coerce.number().int().positive();
+
+// Polled every 15 s by the customer's status page. Another customer's order
+// gets the same 404 as a missing one, so order ids can't be probed.
+ordersRouter.get("/:id", requireVerifiedPhone, async (req, res, next) => {
+  try {
+    const orderId = orderIdParamSchema.parse(req.params.id);
+    const order = await getOrderForCustomer(pool, orderId, req.customer!.customerId);
+    if (!order) {
+      throw new AppError("not_found", "Order not found", 404);
+    }
+    res.json(order);
+  } catch (err) {
+    next(err);
+  }
+});

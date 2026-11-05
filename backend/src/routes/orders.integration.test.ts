@@ -229,6 +229,18 @@ describe("POST /orders", () => {
     expect(tooMany.body.error.code).toBe("validation_error");
   });
 
+  it("returns requestedClockTime in shop time for scheduled orders", async () => {
+    const requestedTime = new Date("2026-10-28T11:45:00-06:00").toISOString();
+    const res = await postOrder({
+      fulfillmentType: "scheduled",
+      requestedTime,
+      paymentMethod: "cash",
+      items: [{ menuItemId: burrito.id, quantity: 1 }],
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.requestedClockTime).toBe("11:45");
+  });
+
   it("rejects requestedTime on ASAP orders and requires it on scheduled ones", async () => {
     const items = [{ menuItemId: burrito.id, quantity: 1 }];
     const asapWithTime = await postOrder({
@@ -240,5 +252,51 @@ describe("POST /orders", () => {
     expect(asapWithTime.body.error.code).toBe("validation_error");
     const scheduledWithout = await postOrder({ fulfillmentType: "scheduled", paymentMethod: "cash", items });
     expect(scheduledWithout.body.error.code).toBe("validation_error");
+  });
+});
+
+describe("GET /orders/:id", () => {
+  let orderId: number;
+  let otherCustomerToken: string;
+  const OTHER_PHONE = `+1555011${String(randomInt(0, 10_000)).padStart(4, "0")}`;
+
+  beforeAll(async () => {
+    orderId = (await postOrder(asapBurrito())).body.id;
+    const res = await request(app).post("/api/v1/auth/verify-code").send({ phone: OTHER_PHONE, code: "123456" });
+    otherCustomerToken = res.body.token;
+  });
+
+  afterAll(async () => {
+    await pool.query(`DELETE FROM customers WHERE phone = $1`, [OTHER_PHONE]);
+  });
+
+  const getOrder = (id: string | number, authToken: string | null = token) => {
+    const req = request(app).get(`/api/v1/orders/${id}`);
+    return authToken ? req.set("Authorization", `Bearer ${authToken}`) : req;
+  };
+
+  it("returns the customer's own order in the same shape POST returned", async () => {
+    const res = await getOrder(orderId);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: orderId, status: "created", totalCents: burrito.price_cents * 2 });
+    expect(res.body.items[0]).toMatchObject({ menuItemId: burrito.id, categoryName: "Burritos" });
+  });
+
+  it("reflects status changes made by staff", async () => {
+    await pool.query(`UPDATE orders SET status = 'ready', updated_at = now() WHERE id = $1`, [orderId]);
+    expect((await getOrder(orderId)).body.status).toBe("ready");
+  });
+
+  it("answers 404 for another customer's order, same as a missing one", async () => {
+    const foreign = await getOrder(orderId, otherCustomerToken);
+    const missing = await getOrder(99_999_999);
+    expect(foreign.status).toBe(404);
+    expect(missing.status).toBe(404);
+    expect(foreign.body).toEqual(missing.body);
+  });
+
+  it("requires a token and a numeric id", async () => {
+    expect((await getOrder(orderId, null)).status).toBe(401);
+    expect((await getOrder("abc")).body.error.code).toBe("validation_error");
   });
 });

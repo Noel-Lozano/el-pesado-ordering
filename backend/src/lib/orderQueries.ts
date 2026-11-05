@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { toShopClockTime } from "./pickupRules.js";
 
 // The order as the customer sees it. Returned by POST /orders (new or
 // replayed) and GET /orders/:id, so both always agree.
@@ -20,6 +21,8 @@ export interface OrderResponse {
   status: string;
   fulfillmentType: string;
   requestedTime: string | null;
+  // requestedTime as "HH:MM" in the shop's timezone, so clients don't need to know it.
+  requestedClockTime: string | null;
   estimatedReadyAt: string | null;
   paymentMethod: string;
   paymentStatus: string;
@@ -86,6 +89,7 @@ export async function getOrderForCustomer(db: Db, orderId: number, customerId: n
     status: order.status,
     fulfillmentType: order.fulfillment_type,
     requestedTime: order.requested_time?.toISOString() ?? null,
+    requestedClockTime: order.requested_time ? toShopClockTime(order.requested_time) : null,
     estimatedReadyAt: order.estimated_ready_at?.toISOString() ?? null,
     paymentMethod: order.payment_method,
     paymentStatus: order.payment_status,

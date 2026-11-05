@@ -42,3 +42,16 @@ export function normalizePhone(input: string, country: PhoneCountry): string | n
 export function maskPhone(e164: string): string {
   return `•••• ${e164.slice(-4)}`;
 }
+
+// "+526561234567" -> { country: "MX", nationalNumber: "6561234567" }, for
+// refilling the phone field. Null for numbers outside +52 / +1.
+export function splitE164(e164: string): { country: PhoneCountry; nationalNumber: string } | null {
+  for (const country of Object.keys(PHONE_COUNTRY_CODES) as PhoneCountry[]) {
+    const prefix = `+${PHONE_COUNTRY_CODES[country]}`;
+    const nationalNumber = e164.slice(prefix.length);
+    if (e164.startsWith(prefix) && nationalNumber.length === NATIONAL_NUMBER_LENGTH) {
+      return { country, nationalNumber };
+    }
+  }
+  return null;
+}
