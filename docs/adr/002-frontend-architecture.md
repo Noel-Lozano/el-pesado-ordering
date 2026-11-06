@@ -1,6 +1,6 @@
 # ADR-002: Frontend MVP Architecture and Ordering Flow
 
-- **Status:** Proposed. Change to Accepted after implementation, and update any section that changed.
+- **Status:** Accepted (2026-11-06), after slices 0–6 of `docs/plans/frontend-mvp-plan.md`. Sections that changed during implementation have been updated; see Implementation Notes.
 - **Date:** 2026-09-24
 - **Deciders:** Noel
 - **Related:** `docs/plans/frontend-mvp-plan.md`, `architecture.md`
@@ -52,7 +52,7 @@ The frontend (Vercel) and API (Railway or Render) are on different domains, whic
 **Revisit when:** a custom domain is set up (`elpesado.com` for the app, `api.elpesado.com` for the API). At that point, move to a same-site httpOnly cookie.
 
 ### 7. Idempotency key on order creation
-The client generates a UUID when the checkout page mounts and sends it as `Idempotency-Key`. The server returns the existing order if it has already seen that key. This prevents duplicate orders caused by double-taps or network retries on mobile.
+The client generates a UUID once per checkout (stored with the checkout form in `sessionStorage`, cleared when the order succeeds) and sends it as `Idempotency-Key`. The server returns the existing order if it has already seen that key for that customer. The key is not regenerated when the checkout page mounts again: going back from verify to checkout and resubmitting must reuse it. This prevents duplicate orders caused by double-taps or network retries on mobile.
 
 ### 8. Free-text notes per line instead of a modifier system
 Each cart line has a note of at most 140 characters, which the kitchen reads the same way it reads a paper ticket. Paid add-ons remain separate items in the `Extras` category.
@@ -68,7 +68,7 @@ Polling is simple and easy to debug, and it is adequate at this shop's order vol
 Keeping every UI string in one file means adding English later is a new file, not a refactor. All prices are formatted through `formatMXN()`.
 
 ### 11. Menu API hides incomplete items
-`GET /menu` returns only items where `is_active = true AND price > 0`, so items with missing data (such as Discada) cannot go live by accident.
+`GET /menu` returns only items where `is_available AND price_cents > 0`, so an item seeded without a price cannot go live by accident.
 
 ---
 
@@ -90,16 +90,25 @@ Keeping every UI string in one file means adding English later is a new file, no
 **Follow-ups**
 - [ ] Custom domain, then migrate the JWT to an httpOnly cookie
 - [ ] Meta business verification and a WhatsApp sender attached to the Twilio Verify service, before launch (ADR-003)
-- [ ] Set Discada's price
+- [x] Set Discada's price (the menu seed prices it: burrito $65, montada $80)
 - [ ] Stripe Mexico (Phase 3), which will change the checkout and verify steps
 
 ---
 
 ## Implementation Notes
 
-*Fill in this section after implementation.*
-
-- **Deviations from this ADR or the spec:** TODO
-- **Idempotency storage approach and migration name:** TODO
-- **Final JWT expiry value:** TODO
-- **Anything learned that should change a decision above:** TODO
+- **Deviations from this ADR or the spec:** each one, with its reason, is in `docs/plans/frontend-mvp-plan.md` ("Deviations from the spec" and the "Found during slice N" notes). The main ones:
+  - **Routes:** the existing `/api/v1/auth/send-code` and `/verify-code` routes are used, not the spec's `/auth/otp/*`. The frontend uses the `src/` layout and reads `NEXT_PUBLIC_API_BASE_URL`.
+  - **Prices:** prices are integer centavos throughout (`price_cents`, `formatMXN(cents)`).
+  - **Category on lines:** cart and order lines carry the category, because 17 item names repeat across Burritos and Montadas.
+  - **Shop hours:** pickup is same-day only, Monday–Saturday 07:30–15:30 in `America/Ciudad_Juarez`. Orders are only taken while the shop is open. Items with `available_from` (after 2 PM) are enforced by the server.
+  - **Order status page without a login:** it explains how to pick up instead of redirecting to checkout.
+  - **Verification channel:** codes go over WhatsApp via Twilio Verify, with no SMS and no status messages (ADR-003).
+- **Idempotency storage approach and migration name:**
+  - **Storage:** a nullable `orders.idempotency_key uuid` with a partial unique index `orders_customer_idempotency_key_uniq` on `(customer_id, idempotency_key)`, added by migration `05_order-idempotency`.
+  - **Lookup:** the server looks the key up before validating hours. A concurrent duplicate hits the unique index (`23505`) and gets the winning order back with 200.
+- **Final JWT expiry value:** `24h` (`VERIFIED_PHONE_TOKEN_EXPIRY` in `backend/src/lib/jwt.ts`). The client reuses a stored token only when it has at least 10 minutes left.
+- **Anything learned that should change a decision above:**
+  - **Decision 4:** the add-to-cart button must stay disabled until the saved cart has loaded. Otherwise a tap before hydration is lost, or overwritten when the saved cart loads.
+  - **Decision 9:** the status page also pauses polling while the tab is hidden and keeps the last known status visible when a poll fails.
+  - **Still open:** whether ASAP orders need a last-order cutoff before 15:30.

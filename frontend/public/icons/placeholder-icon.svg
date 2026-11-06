@@ -1,0 +1,9 @@
+<!-- PLACEHOLDER app icon until the real El Pesado logo is provided.
+     Rendered to the PNGs in this folder by a one-off script; replace those PNGs
+     with the real artwork at the same sizes. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#b91c1c"/>
+  <text x="256" y="256" dy="0.35em" text-anchor="middle"
+        font-family="Arial Black, Arial, Helvetica, sans-serif" font-weight="900"
+        font-size="200" fill="#ffffff">EP</text>
+</svg>

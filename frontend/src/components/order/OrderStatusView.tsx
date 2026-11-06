@@ -32,7 +32,7 @@ function ProgressSteps({ status }: { status: OrderStatus }) {
           <span
             className={`h-2 rounded-full ${index <= currentStep ? "bg-red-700" : "bg-zinc-200 dark:bg-zinc-800"}`}
           />
-          <span className={index <= currentStep ? "" : "text-zinc-500"}>{label}</span>
+          <span className={index <= currentStep ? "" : "text-zinc-500 dark:text-zinc-400"}>{label}</span>
         </li>
       ))}
     </ol>
@@ -65,7 +65,7 @@ function OrderDetails({ order }: { order: Order }) {
                 <p className="font-medium">
                   {item.quantity} × {item.name}
                 </p>
-                <p className="text-xs uppercase tracking-wide text-zinc-500">{item.categoryName}</p>
+                <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{item.categoryName}</p>
                 {item.notes && <p className="text-sm text-zinc-600 dark:text-zinc-400">“{item.notes}”</p>}
               </div>
               <p className="shrink-0 tabular-nums">{formatMXN(item.priceAtOrderCents * item.quantity)}</p>

@@ -173,7 +173,7 @@ export function VerifyForm({ draft, lines, rememberedToken, onOrderPlaced }: Ver
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
           <p>{strings.verify.alreadyVerified(maskPhone(draft.phone))}</p>
-          <Link href="/checkout" className="self-start font-medium underline underline-offset-4">
+          <Link href="/checkout" className="inline-flex min-h-11 items-center self-start font-medium underline underline-offset-4">
             {strings.verify.changeNumber}
           </Link>
         </div>
@@ -194,7 +194,7 @@ export function VerifyForm({ draft, lines, rememberedToken, onOrderPlaced }: Ver
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <p>{strings.verify.sentTo(maskPhone(draft.phone))}</p>
-        <Link href="/checkout" className="self-start font-medium underline underline-offset-4">
+        <Link href="/checkout" className="inline-flex min-h-11 items-center self-start font-medium underline underline-offset-4">
           {strings.verify.changeNumber}
         </Link>
       </div>

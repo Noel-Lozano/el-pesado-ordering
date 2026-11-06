@@ -6,6 +6,8 @@ import { formatClockTime } from "@/lib/time";
 export const strings = {
   app: {
     name: "Burritos El Pesado",
+    // Under the icon on a phone's home screen; must stay short.
+    shortName: "El Pesado",
     tagline: "Pide en línea y recoge en tienda",
     description: "Pide tus burritos en línea y recógelos en tienda, sin filas.",
   },
@@ -150,6 +152,14 @@ export const strings = {
     unavailableTitle: "No podemos mostrar tu pedido aquí",
     unavailableBody:
       "Abre esta página en el mismo teléfono donde hiciste tu pedido. Si ya lo hiciste, pasa a recogerlo con tu nombre y los últimos 4 dígitos de tu celular.",
+  },
+  common: {
+    loading: "Cargando…",
+  },
+  notFound: {
+    title: "No encontramos esta página",
+    body: "Puede que el enlace esté mal escrito o que la página ya no exista.",
+    backToMenu: "Ir al menú",
   },
   errors: {
     menuLoad: {

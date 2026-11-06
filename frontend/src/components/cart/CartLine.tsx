@@ -19,7 +19,7 @@ export function CartLine({ line }: CartLineProps) {
     <article className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{line.categoryName}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{line.categoryName}</p>
           <h2 className="text-lg font-semibold leading-snug">{line.name}</h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             {strings.cart.unitPrice(formatMXN(line.unitPriceCents))}
@@ -50,7 +50,7 @@ export function CartLine({ line }: CartLineProps) {
           <label htmlFor={noteId} className="text-sm font-medium">
             {strings.cart.noteLabel}
           </label>
-          <span className="text-xs tabular-nums text-zinc-500">
+          <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
             {strings.cart.noteCounter(line.note.length, NOTE_MAX_LENGTH)}
           </span>
         </div>

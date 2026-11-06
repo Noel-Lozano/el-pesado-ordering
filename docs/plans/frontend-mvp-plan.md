@@ -375,6 +375,13 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
   - **Polling details:** an invalid order id (a 400 from the server) is shown as not found. When a poll fails, the last status stays on screen with a "Sin conexión" notice.
   - **Progress bar:** the status page shows 4 steps (Recibido, Preparando, Listo, Entregado). `confirmed` counts as Recibido. `no_show` and `cancelled` show no progress bar.
 
+- **Found during slice 6:**
+  - **PWA:** `app/manifest.ts` serves the manifest (Spanish name, short name "El Pesado", `standalone`, portrait, theme color `#b91c1c`). `layout.tsx` adds `viewport` (theme color, `viewportFit: "cover"` so the cart bar's safe-area padding works on iPhones; zoom stays enabled) and `appleWebApp` and Apple touch icon metadata for iOS home-screen installs. There's no service worker or offline mode, which is out of scope.
+  - **Placeholder icons:** `public/icons/` (192, 512, maskable 512, Apple 180) are rendered from `placeholder-icon.svg` (red square, "EP"). Replace the PNGs with the real logo at the same sizes and file names.
+  - **Spanish fallback pages:** a 404 page (`app/not-found.tsx`) and a loading state (`app/loading.tsx`, which honors reduced-motion).
+  - **Audit:** every page state at 360px, light and dark, was checked for overflow, tap targets under 44px, and axe-core WCAG 2.1 AA. It found and fixed the "Cambiar número" link (24px tall) and dark-mode `text-zinc-500` small text (3.7–4.1:1 contrast, now `dark:text-zinc-400`). The re-audit found 0 issues.
+  - **Brand color:** it lives in `lib/theme.ts` (`BRAND_COLOR`) rather than in the copy file.
+
 ## 6. Verification (overall)
 
 - Each slice has its own acceptance criteria and passes `npm run lint`, `npx tsc --noEmit`, and `npx vitest run` in each package it touches.
