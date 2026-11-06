@@ -1,0 +1,48 @@
+// Shapes for POST /api/v1/orders and GET /api/v1/orders/:id. Money is
+// integer centavos; times are ISO 8601 strings.
+
+export type OrderStatus = "created" | "confirmed" | "preparing" | "ready" | "picked_up" | "no_show" | "cancelled";
+
+// Statuses after which nothing else will change, so polling stops.
+export const TERMINAL_ORDER_STATUSES: readonly OrderStatus[] = ["picked_up", "no_show", "cancelled"];
+
+export interface OrderItem {
+  menuItemId: number;
+  name: string;
+  categoryName: string;
+  quantity: number;
+  priceAtOrderCents: number;
+  notes: string | null;
+}
+
+export interface Order {
+  id: number;
+  status: OrderStatus;
+  fulfillmentType: "asap" | "scheduled";
+  requestedTime: string | null;
+  // requestedTime as "HH:MM" in the shop's timezone.
+  requestedClockTime: string | null;
+  estimatedReadyAt: string | null;
+  paymentMethod: string;
+  paymentStatus: string;
+  totalCents: number;
+  createdAt: string;
+  customerName: string | null;
+  phoneLast4: string;
+  items: OrderItem[];
+}
+
+export interface CreateOrderItem {
+  menuItemId: number;
+  quantity: number;
+  notes?: string;
+}
+
+// No prices: the server computes every total from the database.
+export interface CreateOrderRequest {
+  fulfillmentType: "asap" | "scheduled";
+  requestedTime?: string;
+  paymentMethod: "cash";
+  customerName: string;
+  items: CreateOrderItem[];
+}

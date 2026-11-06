@@ -7,10 +7,16 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().min(1, "STRIPE_SECRET_KEY is required"),
   TWILIO_ACCOUNT_SID: z.string().min(1, "TWILIO_ACCOUNT_SID is required"),
   TWILIO_AUTH_TOKEN: z.string().min(1, "TWILIO_AUTH_TOKEN is required"),
-  TWILIO_PHONE_NUMBER: z.string().min(1, "TWILIO_PHONE_NUMBER is required"),
+  // Verify service with the shop's WhatsApp sender attached (ADR-003).
+  TWILIO_VERIFY_SERVICE_SID: z.string().regex(/^VA[0-9a-f]{32}$/, "TWILIO_VERIFY_SERVICE_SID must be a Verify service SID (VA...)"),
   JWT_SECRET: z.string().min(1, "JWT_SECRET is required"),
-  OTP_EXPIRY_MINUTES: z.coerce.number().int().positive().default(5),
-  OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  // Comma-separated list of frontend origins allowed to call the API from a
+  // browser, e.g. "http://localhost:3000,https://elpesado.vercel.app".
+  CORS_ORIGINS: z
+    .string()
+    .min(1, "CORS_ORIGINS is required")
+    .transform((value) => value.split(",").map((origin) => origin.trim()))
+    .pipe(z.array(z.url("Each CORS_ORIGINS entry must be a full origin URL"))),
 });
 
 const parsed = envSchema.safeParse(process.env);
