@@ -7,10 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function VerifyPage() {
-  return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
-      <h1 className="text-3xl font-extrabold tracking-tight">{strings.verify.pageTitle}</h1>
-      <VerifyView />
-    </main>
-  );
+  return <VerifyView />;
 }

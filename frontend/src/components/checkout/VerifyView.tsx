@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { VerifyForm } from "@/components/checkout/VerifyForm";
+import { TopBar } from "@/components/ui/TopBar";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { useNow } from "@/hooks/useNow";
@@ -43,15 +44,31 @@ export function VerifyView() {
     router.replace(`/orders/${order.id}`);
   }
 
+  let content;
   if (placedOrderId !== null) {
-    return <p className="py-12 text-center text-lg font-semibold">{strings.verify.redirecting}</p>;
-  }
-  if (!hasLoaded || !auth.hasLoaded || now === null || redirectTo !== null || draft === null) {
-    return <p className="py-12 text-center text-zinc-600 dark:text-zinc-400">{strings.verify.loading}</p>;
+    content = (
+      <p role="status" className="py-12 text-center text-lg font-black">
+        {strings.verify.redirecting}
+      </p>
+    );
+  } else if (!hasLoaded || !auth.hasLoaded || now === null || redirectTo !== null || draft === null) {
+    content = (
+      <p role="status" className="py-12 text-center font-bold text-muted">
+        {strings.verify.loading}
+      </p>
+    );
+  } else {
+    const rememberedToken =
+      auth.token !== null && auth.phone === draft.phone && isTokenUsable(auth.token, now) ? auth.token : null;
+    content = (
+      <VerifyForm draft={draft} lines={lines} rememberedToken={rememberedToken} onOrderPlaced={handleOrderPlaced} />
+    );
   }
 
-  const rememberedToken =
-    auth.token !== null && auth.phone === draft.phone && isTokenUsable(auth.token, now) ? auth.token : null;
-
-  return <VerifyForm draft={draft} lines={lines} rememberedToken={rememberedToken} onOrderPlaced={handleOrderPlaced} />;
+  return (
+    <>
+      <TopBar title={strings.verify.pageTitle} back={{ href: "/checkout", label: strings.verify.backLabel }} />
+      <main className="flex flex-1 flex-col">{content}</main>
+    </>
+  );
 }

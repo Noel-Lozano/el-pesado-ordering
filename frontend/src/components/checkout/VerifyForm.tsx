@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { type SubmitEvent, useEffect, useState } from "react";
+import { type SubmitEvent, useEffect, useRef, useState } from "react";
 import { OTP_LENGTH, OtpInput } from "@/components/checkout/OtpInput";
+import { BottomActionBar } from "@/components/ui/BottomActionBar";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { InfoIcon, PhoneIcon } from "@/components/ui/icons";
+import { Notice } from "@/components/ui/Notice";
 import { useAuth } from "@/context/AuthContext";
 import { type CartLine, getCartTotals } from "@/context/cartReducer";
 import { ApiError, createOrder, sendCode, verifyCode } from "@/lib/api";
@@ -13,7 +17,8 @@ import { maskPhone } from "@/lib/phone";
 import { strings } from "@/lib/strings";
 import type { Order } from "@/types/order";
 
-const RESEND_COOLDOWN_SECONDS = 30;
+const RESEND_COOLDOWN_SECONDS = 60;
+const CODE_MESSAGE_ID = "codigo-mensaje";
 
 type Phase = "enterCode" | "verifying" | "placingOrder" | "orderFailed";
 // What the customer can do about a failed order.
@@ -67,6 +72,8 @@ interface VerifyFormProps {
   onOrderPlaced: (order: Order) => void;
 }
 
+// Screen 05 · Código de WhatsApp: verify the code, then create the order with
+// the checkout's idempotency key and hand off to the order page.
 export function VerifyForm({ draft, lines, rememberedToken, onOrderPlaced }: VerifyFormProps) {
   const { setToken } = useAuth();
   const [code, setCode] = useState("");
@@ -79,6 +86,7 @@ export function VerifyForm({ draft, lines, rememberedToken, onOrderPlaced }: Ver
   const [verifiedToken, setVerifiedToken] = useState<string | null>(rememberedToken);
   // Decided once on mount, so saving a fresh token mid-flow doesn't switch views.
   const [skipsCode] = useState(rememberedToken !== null);
+  const firstDigitRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -88,6 +96,7 @@ export function VerifyForm({ draft, lines, rememberedToken, onOrderPlaced }: Ver
 
   const isBusy = phase === "verifying" || phase === "placingOrder";
   const { subtotalCents } = getCartTotals(lines);
+  const maskedPhone = maskPhone(draft.phone);
 
   async function placeOrder(token: string) {
     setPhase("placingOrder");
@@ -105,11 +114,7 @@ export function VerifyForm({ draft, lines, rememberedToken, onOrderPlaced }: Ver
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isBusy) return;
-    if (code.length !== OTP_LENGTH) {
-      setCodeError(strings.verify.errors.codeIncomplete);
-      return;
-    }
+    if (isBusy || code.length !== OTP_LENGTH) return;
 
     setCodeError(null);
     setNotice(null);
@@ -120,6 +125,9 @@ export function VerifyForm({ draft, lines, rememberedToken, onOrderPlaced }: Ver
     } catch (error) {
       setCodeError(verifyErrorMessage(error));
       setPhase("enterCode");
+      // Start over from the first box so a new attempt is quick.
+      setCode("");
+      firstDigitRef.current?.focus();
       return;
     }
     setToken(token, draft.phone);
@@ -135,106 +143,143 @@ export function VerifyForm({ draft, lines, rememberedToken, onOrderPlaced }: Ver
       await sendCode(draft.phone);
       setCode("");
       setNotice(strings.verify.resent);
+      firstDigitRef.current?.focus();
     } catch (error) {
       setCodeError(verifyErrorMessage(error));
     }
   }
 
-  const primaryButtonClass =
-    "flex min-h-14 items-center justify-center rounded-full bg-red-700 px-6 text-lg font-bold text-white active:bg-red-800 disabled:opacity-50";
-  const secondaryLinkClass = "flex min-h-11 items-center justify-center font-medium underline underline-offset-4";
+  const submitLabel =
+    phase === "verifying"
+      ? strings.verify.verifying
+      : phase === "placingOrder"
+        ? strings.verify.placingOrder
+        : strings.verify.submit;
 
   if (phase === "orderFailed" && failure) {
     const token = verifiedToken;
     return (
-      <div className="flex flex-col gap-4">
-        <p role="alert" className="rounded-xl bg-red-50 p-4 font-medium text-red-900 dark:bg-red-950 dark:text-red-100">
-          {failure.message}
-        </p>
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-4 py-8">
+        <Notice tone="warning">
+          <p role="alert">{failure.message}</p>
+        </Notice>
         {failure.action === "retry" && token && (
-          <button type="button" onClick={() => placeOrder(token)} className={primaryButtonClass}>
-            {strings.verify.retry}
-          </button>
+          <Button onClick={() => placeOrder(token)}>{strings.verify.retry}</Button>
         )}
-        {failure.action === "checkout" && (
-          <Link href="/checkout" className={primaryButtonClass}>
-            {strings.verify.goToCheckout}
-          </Link>
-        )}
-        <Link href="/cart" className={failure.action === "cart" ? primaryButtonClass : secondaryLinkClass}>
+        {failure.action === "checkout" && <ButtonLink href="/checkout">{strings.verify.goToCheckout}</ButtonLink>}
+        <ButtonLink href="/cart" variant={failure.action === "cart" ? "primary" : "secondary"}>
           {strings.verify.goToCart}
-        </Link>
+        </ButtonLink>
       </div>
     );
   }
 
+  const header = (
+    <span
+      aria-hidden
+      className="flex h-[72px] w-[72px] items-center justify-center rounded border-2 border-navy bg-yellow shadow-hard"
+    >
+      <PhoneIcon />
+    </span>
+  );
+  const totalLine = (
+    <p className="text-sm font-bold text-muted">{strings.verify.totalLine(formatMXN(subtotalCents))}</p>
+  );
+
   if (skipsCode && verifiedToken) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-1">
-          <p>{strings.verify.alreadyVerified(maskPhone(draft.phone))}</p>
-          <Link href="/checkout" className="inline-flex min-h-11 items-center self-start font-medium underline underline-offset-4">
+      <div className="flex flex-1 flex-col">
+        <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-4 pb-6 pt-8">
+          {header}
+          <div className="flex flex-col gap-2">
+            <h2 className="font-display text-[32px] font-normal leading-tight">
+              {strings.verify.alreadyVerifiedHeading}
+            </h2>
+            <p className="text-base leading-normal text-muted">{strings.verify.alreadyVerified(maskedPhone)}</p>
+          </div>
+          <Link href="/checkout" className="flex min-h-11 items-center self-start text-sm font-black underline underline-offset-4">
             {strings.verify.changeNumber}
           </Link>
+          {totalLine}
         </div>
-        <p className="text-zinc-600 dark:text-zinc-400">{strings.verify.totalLine(formatMXN(subtotalCents))}</p>
-        <button
-          type="button"
-          onClick={() => placeOrder(verifiedToken)}
-          disabled={isBusy}
-          className={primaryButtonClass}
-        >
-          {phase === "placingOrder" ? strings.verify.placingOrder : strings.verify.submit}
-        </button>
+        <BottomActionBar>
+          <Button onClick={() => placeOrder(verifiedToken)} disabled={isBusy}>
+            {submitLabel}
+          </Button>
+        </BottomActionBar>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <p>{strings.verify.sentTo(maskPhone(draft.phone))}</p>
-        <Link href="/checkout" className="inline-flex min-h-11 items-center self-start font-medium underline underline-offset-4">
-          {strings.verify.changeNumber}
-        </Link>
+    <form onSubmit={handleSubmit} noValidate className="flex flex-1 flex-col">
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-[22px] px-4 pb-6 pt-8">
+        {header}
+        <div className="flex flex-col gap-2">
+          <h2 className="font-display text-[32px] font-normal leading-tight">{strings.verify.heading}</h2>
+          <p className="text-base leading-normal text-muted">
+            {strings.verify.sentToBefore}
+            <strong className="whitespace-nowrap text-navy">{maskedPhone}</strong>
+            {strings.verify.sentToAfter}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <OtpInput
+            value={code}
+            onChange={(digits) => {
+              setCode(digits);
+              setCodeError(null);
+            }}
+            disabled={isBusy}
+            isInvalid={codeError !== null}
+            describedById={codeError || notice ? CODE_MESSAGE_ID : undefined}
+            firstInputRef={firstDigitRef}
+          />
+          {codeError && (
+            <p id={CODE_MESSAGE_ID} role="alert" className="text-sm font-extrabold text-red">
+              {codeError}
+            </p>
+          )}
+          {!codeError && notice && (
+            <p id={CODE_MESSAGE_ID} role="status" className="text-sm font-bold">
+              {notice}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          {resendCooldown > 0 ? (
+            <p className="text-sm font-bold text-muted" aria-live="off">
+              {strings.verify.resendIn(resendCooldown)}
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isBusy}
+              className="flex min-h-11 items-center text-sm font-black underline underline-offset-4 disabled:opacity-50"
+            >
+              {strings.verify.resend}
+            </button>
+          )}
+          <Link href="/checkout" className="flex min-h-11 items-center text-sm font-black underline underline-offset-4">
+            {strings.verify.changeNumber}
+          </Link>
+        </div>
+
+        <div className="flex gap-2.5 rounded border-[1.5px] border-dashed border-navy bg-paper px-3.5 py-3">
+          <InfoIcon className="shrink-0" />
+          <p className="text-sm font-semibold leading-snug">{strings.verify.privacyNote}</p>
+        </div>
+        {totalLine}
       </div>
 
-      <OtpInput
-        id="codigo"
-        value={code}
-        disabled={isBusy}
-        error={codeError}
-        onChange={(digits) => {
-          setCode(digits);
-          setCodeError(null);
-        }}
-      />
-
-      {notice && (
-        <p role="status" className="text-sm text-zinc-700 dark:text-zinc-300">
-          {notice}
-        </p>
-      )}
-
-      <p className="text-zinc-600 dark:text-zinc-400">{strings.verify.totalLine(formatMXN(subtotalCents))}</p>
-
-      <div className="flex flex-col gap-2">
-        <button type="submit" disabled={isBusy || code.length !== OTP_LENGTH} className={primaryButtonClass}>
-          {phase === "verifying"
-            ? strings.verify.verifying
-            : phase === "placingOrder"
-              ? strings.verify.placingOrder
-              : strings.verify.submit}
-        </button>
-        <button
-          type="button"
-          onClick={handleResend}
-          disabled={isBusy || resendCooldown > 0}
-          className={`${secondaryLinkClass} disabled:no-underline disabled:opacity-50`}
-        >
-          {resendCooldown > 0 ? strings.verify.resendIn(resendCooldown) : strings.verify.resend}
-        </button>
-      </div>
+      <BottomActionBar>
+        <Button type="submit" disabled={isBusy || code.length !== OTP_LENGTH}>
+          {submitLabel}
+        </Button>
+      </BottomActionBar>
     </form>
   );
 }

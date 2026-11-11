@@ -105,6 +105,28 @@ export function CheckIcon({ size = 16, className }: IconProps) {
   );
 }
 
+export function PhoneIcon({ size = 36, className }: IconProps) {
+  return (
+    <svg {...svgProps(size, className)}>
+      <rect x="6" y="2.5" width="12" height="19" rx="1.5" stroke="currentColor" strokeWidth="2.2" />
+      <path d="M10 18.5h4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      {/* The "message" lines are red in the mockup. */}
+      <g className="text-red">
+        <path d="M9 8h6M9 11.5h4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      </g>
+    </svg>
+  );
+}
+
+export function InfoIcon({ size = 22, className }: IconProps) {
+  return (
+    <svg {...svgProps(size, className)}>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2" />
+      <path d="M12 11v5M12 7.5v.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function ChevronDownIcon({ size = 16, className }: IconProps) {
   return (
     <svg {...svgProps(size, className)}>
