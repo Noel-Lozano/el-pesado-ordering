@@ -15,6 +15,13 @@ export const strings = {
     categoriesNavLabel: "Categorías del menú",
     empty: "Por ahora no hay platillos disponibles. Vuelve más tarde.",
     availableFrom: (hhmm: string) => `Disponible después de las ${formatClockTime(hhmm)}`,
+    photoPending: (name: string) => `Foto pendiente: ${name}`,
+  },
+  tabBar: {
+    navLabel: "Navegación principal",
+    menu: "Menú",
+    orders: "Pedidos",
+    account: "Cuenta",
   },
   cart: {
     pageTitle: "Tu carrito",

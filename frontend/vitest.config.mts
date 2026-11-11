@@ -7,6 +7,8 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
-    include: ["src/**/*.test.ts"],
+    // Pure logic in *.test.ts runs in Node; component tests (*.test.tsx) opt
+    // into jsdom with a `// @vitest-environment jsdom` comment at the top.
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });

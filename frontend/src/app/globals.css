@@ -2,20 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@layer base {
+  body {
+    background-color: theme("colors.white");
+    color: theme("colors.navy");
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  /* A visible, on-brand focus ring for keyboard users on every control. */
+  :focus-visible {
+    outline: 3px solid theme("colors.navy");
+    outline-offset: 2px;
+  }
+
+  /* Inputs at 16px+ stop iOS Safari zooming the page on focus. */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* "BURRITOS EL PESADO" / "¡Pedido recibido!": yellow with a red outline and
+     red offset shadow. If a browser lacks text-stroke, the shadow alone still
+     separates the yellow from the navy background. */
+  .title-outline {
+    color: theme("colors.yellow");
+    -webkit-text-stroke: 1.5px theme("colors.red");
+    paint-order: stroke fill;
+    text-shadow: 2px 2px 0 theme("colors.red");
+  }
 }

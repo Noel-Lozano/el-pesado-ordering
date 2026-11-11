@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { strings } from "@/lib/strings";
-import { BRAND_COLOR } from "@/lib/theme";
+import { BRAND_COLOR, PAGE_BACKGROUND_COLOR } from "@/lib/theme";
 
 // Web app manifest: lets customers "Add to Home Screen" and open the app
 // full-screen like a native app (architecture.md §2: PWA, no native apps).
@@ -15,7 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#ffffff",
+    background_color: PAGE_BACKGROUND_COLOR,
     theme_color: BRAND_COLOR,
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
