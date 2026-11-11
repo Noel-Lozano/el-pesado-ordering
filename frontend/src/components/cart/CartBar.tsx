@@ -5,8 +5,9 @@ import { useCart } from "@/context/CartContext";
 import { formatMXN } from "@/lib/money";
 import { strings } from "@/lib/strings";
 
-// Sticky bottom bar on the menu page: "Ver carrito (3) · $240". Sits in the
-// thumb zone and only appears once the cart has something in it.
+// Floating "Ver pedido · N · $total" bar above the tab bar (mockup 01). Only
+// shown once the cart has something in it; on desktop the cart sidebar
+// replaces it.
 export function CartBar() {
   const { hasLoaded, itemCount, subtotalCents } = useCart();
 
@@ -14,13 +15,21 @@ export function CartBar() {
     return null;
   }
 
+  const total = formatMXN(subtotalCents);
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+    <div className="px-4 pb-3 lg:hidden">
       <Link
         href="/cart"
-        className="mx-auto flex min-h-14 max-w-2xl items-center justify-center rounded-full bg-red-700 px-6 text-lg font-bold text-white shadow-lg active:bg-red-800"
+        aria-label={strings.cart.viewOrderLabel(itemCount, total)}
+        className="mx-auto flex h-14 max-w-xl items-center justify-between rounded border-2 border-navy bg-orange px-4 text-navy shadow-hard active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
       >
-        {strings.cart.viewCart(itemCount, formatMXN(subtotalCents))}
+        <span className="flex items-center gap-2.5">
+          <span className="flex h-7 min-w-7 items-center justify-center rounded-sm bg-navy px-1 text-sm font-black text-yellow">
+            {itemCount}
+          </span>
+          <span className="font-display text-[19px]">{strings.cart.viewOrder}</span>
+        </span>
+        <span className="text-[17px] font-black tabular-nums">{total}</span>
       </Link>
     </div>
   );

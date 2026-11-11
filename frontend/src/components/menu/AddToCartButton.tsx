@@ -1,47 +1,55 @@
 "use client";
 
-import { QuantityStepper } from "@/components/cart/QuantityStepper";
+import Link from "next/link";
+import { PlusIcon } from "@/components/ui/icons";
 import { useCart } from "@/context/CartContext";
+import type { MenuProduct } from "@/lib/menuGrouping";
 import { strings } from "@/lib/strings";
-import type { MenuItem } from "@/types/menu";
 
 interface AddToCartButtonProps {
-  item: MenuItem;
-  categoryName: string;
+  product: MenuProduct;
+  isAvailable: boolean;
+  // The visible "Disponible después de las 2 PM" text, when disabled.
+  unavailableReasonId?: string;
 }
 
-// Shows "Agregar" until the item is in the cart, then becomes a stepper so
-// quantity can be changed without leaving the menu.
-export function AddToCartButton({ item, categoryName }: AddToCartButtonProps) {
-  const { lines, hasLoaded, addItem, setQuantity } = useCart();
-  const line = lines.find((cartLine) => cartLine.menuItemId === item.id);
-  const itemLabel = strings.cart.itemLabel(item.name, categoryName);
+const BUTTON_CLASSES =
+  "flex h-11 w-11 items-center justify-center rounded-sm border-2 border-navy bg-orange text-navy disabled:cursor-not-allowed disabled:border-disabled disabled:bg-paper disabled:text-muted";
 
-  const add = () =>
-    addItem({ menuItemId: item.id, name: item.name, categoryName, unitPriceCents: item.priceCents });
+// The orange "+" on a menu row. A Burrito/Montada pair needs a choice first,
+// so its "+" opens the item page; a plain item is added straight away.
+export function AddToCartButton({ product, isAvailable, unavailableReasonId }: AddToCartButtonProps) {
+  const { hasLoaded, addItem } = useCart();
+  const item = product.defaultItem;
 
-  if (!line) {
+  if (product.variants.length > 0) {
     return (
-      <button
-        type="button"
-        onClick={add}
-        // Disabled until the saved cart is read: a tap before then would be
-        // lost (not hydrated yet) or overwritten when the saved cart loads.
-        disabled={!hasLoaded}
-        aria-label={strings.cart.addLabel(itemLabel)}
-        className="min-h-11 rounded-full bg-red-700 px-5 font-semibold text-white active:bg-red-800 disabled:opacity-60"
-      >
-        {strings.cart.add}
-      </button>
+      <Link href={`/item/${item.id}`} aria-label={strings.menu.chooseLabel(product.name)} className={BUTTON_CLASSES}>
+        <PlusIcon />
+      </Link>
     );
   }
 
+  const itemLabel = strings.cart.itemLabel(item.name, product.categoryName);
   return (
-    <QuantityStepper
-      itemName={itemLabel}
-      quantity={line.quantity}
-      onDecrease={() => setQuantity(item.id, line.quantity - 1)}
-      onIncrease={add}
-    />
+    <button
+      type="button"
+      onClick={() =>
+        addItem({
+          menuItemId: item.id,
+          name: item.name,
+          categoryName: product.defaultItemCategoryName,
+          unitPriceCents: item.priceCents,
+        })
+      }
+      // Also disabled until the saved cart is read: a tap before then would
+      // be overwritten when the saved cart loads.
+      disabled={!hasLoaded || !isAvailable}
+      aria-label={strings.cart.addLabel(itemLabel)}
+      aria-describedby={isAvailable ? undefined : unavailableReasonId}
+      className={BUTTON_CLASSES}
+    >
+      <PlusIcon />
+    </button>
   );
 }

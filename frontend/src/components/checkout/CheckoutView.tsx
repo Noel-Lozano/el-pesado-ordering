@@ -1,11 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { TopBar } from "@/components/ui/TopBar";
 import { useAuth } from "@/context/AuthContext";
-import { useCart } from "@/context/CartContext";
+import { useCart, useCartReconcile } from "@/context/CartContext";
 import { getMenu } from "@/lib/api";
 import { strings } from "@/lib/strings";
 import type { MenuResponse } from "@/types/menu";
@@ -21,6 +22,8 @@ export function CheckoutView() {
   // The form prefills a returning customer's phone from the stored login.
   const { hasLoaded: hasAuthLoaded } = useAuth();
   const [menuState, setMenuState] = useState<MenuState>({ status: "loading" });
+  // Refreshes prices so the summary matches what the server will charge.
+  useCartReconcile(menuState.status === "ready" ? menuState.menu.categories : null);
 
   const loadMenu = useCallback(() => {
     getMenu()
@@ -39,30 +42,39 @@ export function CheckoutView() {
     }
   }, [isCartEmpty, router]);
 
+  let content;
   if (!hasLoaded || !hasAuthLoaded || isCartEmpty || menuState.status === "loading") {
-    return <p className="py-12 text-center text-zinc-600 dark:text-zinc-400">{strings.checkout.loading}</p>;
-  }
-
-  if (menuState.status === "error") {
-    return (
-      <div className="flex flex-col items-center gap-4 py-12 text-center">
-        <p>{strings.checkout.menuLoadError}</p>
-        <button
-          type="button"
+    content = (
+      <p role="status" className="py-12 text-center font-bold text-muted">
+        {strings.checkout.loading}
+      </p>
+    );
+  } else if (menuState.status === "error") {
+    content = (
+      <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 px-4 py-12 text-center">
+        <p className="font-bold">{strings.checkout.menuLoadError}</p>
+        <Button
+          className="w-full"
           onClick={() => {
             setMenuState({ status: "loading" });
             loadMenu();
           }}
-          className="min-h-11 rounded-full bg-red-700 px-6 font-semibold text-white active:bg-red-800"
         >
           {strings.checkout.retry}
-        </button>
-        <Link href="/cart" className="flex min-h-11 items-center font-medium underline underline-offset-4">
+        </Button>
+        <ButtonLink href="/cart" variant="secondary" className="w-full">
           {strings.checkout.backToCart}
-        </Link>
+        </ButtonLink>
       </div>
     );
+  } else {
+    content = <CheckoutForm menu={menuState.menu} lines={lines} />;
   }
 
-  return <CheckoutForm menu={menuState.menu} lines={lines} />;
+  return (
+    <>
+      <TopBar title={strings.checkout.pageTitle} back={{ href: "/cart", label: strings.checkout.backLabel }} />
+      <main className="flex flex-1 flex-col">{content}</main>
+    </>
+  );
 }

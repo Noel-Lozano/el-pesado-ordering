@@ -1,22 +1,31 @@
 import type { Config } from "tailwindcss";
+import { colors, hardShadow, radii } from "./src/lib/designTokens";
 
 const config: Config = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
-  // Matches the `prefers-color-scheme` block in globals.css. This is also
-  // Tailwind's default, but stated explicitly so the dark: variant's
-  // behavior is obvious without knowing the default.
-  darkMode: "media",
+  // The design is light-only (ADR-004 §5), so there is no dark mode.
   theme: {
+    // Replaced, not extended: only the brand palette is available, so a
+    // stray `bg-zinc-100` or `text-red-700` fails to style and gets noticed.
+    colors: {
+      transparent: "transparent",
+      current: "currentColor",
+      ...colors,
+    },
+    // Replaced, not extended: corners are 4px or 6px only, no pills.
+    borderRadius: {
+      none: "0",
+      sm: radii.small,
+      DEFAULT: radii.medium,
+    },
     extend: {
-      colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+      boxShadow: {
+        hard: hardShadow,
       },
       fontFamily: {
-        // Set by next/font in layout.tsx; the variable already carries
-        // Geist's own fallback stack.
-        sans: ["var(--font-geist-sans)"],
-        mono: ["var(--font-geist-mono)"],
+        // Set by next/font in layout.tsx.
+        sans: ["var(--font-nunito)", "system-ui", "sans-serif"],
+        display: ["var(--font-lilita-one)", "system-ui", "sans-serif"],
       },
     },
   },

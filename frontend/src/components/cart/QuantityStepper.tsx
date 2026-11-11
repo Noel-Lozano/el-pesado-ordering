@@ -1,4 +1,5 @@
 import { MAX_QUANTITY_PER_LINE } from "@/context/cartReducer";
+import { cx } from "@/lib/cx";
 import { strings } from "@/lib/strings";
 
 interface QuantityStepperProps {
@@ -6,36 +7,58 @@ interface QuantityStepperProps {
   quantity: number;
   onDecrease: () => void;
   onIncrease: () => void;
+  // − is disabled at `min`. The cart passes 0, so − at 1 still fires and the
+  // cart asks before removing the line; the item detail screen passes 1.
+  min?: number;
+  max?: number;
+  size?: "md" | "lg";
 }
 
 // − / quantity / + with 44px tap targets, for one-handed use on a phone.
-export function QuantityStepper({ itemName, quantity, onDecrease, onIncrease }: QuantityStepperProps) {
-  const buttonClass =
-    "flex h-11 w-11 items-center justify-center rounded-full text-2xl font-bold leading-none disabled:opacity-40";
+export function QuantityStepper({
+  itemName,
+  quantity,
+  onDecrease,
+  onIncrease,
+  min = 0,
+  max = MAX_QUANTITY_PER_LINE,
+  size = "md",
+}: QuantityStepperProps) {
+  const buttonClasses = cx(
+    "flex w-11 items-center justify-center rounded-sm text-xl font-black leading-none",
+    "disabled:cursor-not-allowed disabled:opacity-40",
+    size === "lg" ? "h-11" : "h-[42px]",
+  );
 
   return (
-    <div className="flex items-center rounded-full border border-zinc-300 dark:border-zinc-700">
+    <div
+      className={cx(
+        "flex shrink-0 items-center gap-1 rounded-sm border-2 border-navy px-0.5",
+        size === "lg" ? "h-[54px]" : "h-[50px]",
+      )}
+    >
       <button
         type="button"
         onClick={onDecrease}
+        disabled={quantity <= min}
         aria-label={strings.cart.decreaseLabel(itemName)}
-        className={buttonClass}
+        className={cx(buttonClasses, "bg-paper text-navy")}
       >
         −
       </button>
       <span
         aria-live="polite"
         aria-label={strings.cart.quantityLabel(itemName, quantity)}
-        className="min-w-8 text-center text-lg font-semibold tabular-nums"
+        className="min-w-6 text-center text-base font-black tabular-nums"
       >
         {quantity}
       </span>
       <button
         type="button"
         onClick={onIncrease}
-        disabled={quantity >= MAX_QUANTITY_PER_LINE}
+        disabled={quantity >= max}
         aria-label={strings.cart.increaseLabel(itemName)}
-        className={buttonClass}
+        className={cx(buttonClasses, "bg-navy text-yellow")}
       >
         +
       </button>
