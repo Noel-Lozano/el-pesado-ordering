@@ -33,7 +33,8 @@ export interface CartItemInput {
 
 export type CartAction =
   | { type: "load"; lines: CartLine[] }
-  | { type: "add"; item: CartItemInput }
+  // quantity defaults to 1 and note to "" (the menu's "+" button).
+  | { type: "add"; item: CartItemInput; quantity?: number; note?: string }
   | { type: "setQuantity"; menuItemId: number; quantity: number }
   | { type: "setNote"; menuItemId: number; note: string }
   | { type: "remove"; menuItemId: number }
@@ -47,23 +48,45 @@ function clampQuantity(quantity: number): number {
   return Math.min(Math.max(Math.trunc(quantity), 0), MAX_QUANTITY_PER_LINE);
 }
 
+function normalizeNote(note: string): string {
+  return note.trim().slice(0, NOTE_MAX_LENGTH);
+}
+
+// True when adding this item with this note would overwrite a different note
+// already on its line, so the UI can tell the customer (ADR-004 §2).
+export function willReplaceNote(lines: CartLine[], menuItemId: number, note: string): boolean {
+  const existing = lines.find((line) => line.menuItemId === menuItemId);
+  const newNote = normalizeNote(note);
+  return existing !== undefined && existing.note !== "" && newNote !== "" && existing.note !== newNote;
+}
+
 export function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case "load":
       return { lines: action.lines, hasLoaded: true };
 
     case "add": {
+      const addedQuantity = Math.max(1, clampQuantity(action.quantity ?? 1));
+      const addedNote = normalizeNote(action.note ?? "");
       const existing = state.lines.find((line) => line.menuItemId === action.item.menuItemId);
       if (!existing) {
-        const newLine: CartLine = { ...action.item, quantity: 1, note: "" };
+        const newLine: CartLine = { ...action.item, quantity: addedQuantity, note: addedNote };
         return { ...state, lines: [...state.lines, newLine] };
       }
+      // Lines are keyed by item id only (the API rejects the same item twice
+      // in one order, ADR-004 §2): adding again sums the quantity, and a new
+      // non-empty note replaces the old one; an empty note keeps it.
       return {
         ...state,
         lines: state.lines.map((line) =>
           line.menuItemId === action.item.menuItemId
-            ? // Refresh name and price from the latest menu data while we're here.
-              { ...line, ...action.item, quantity: clampQuantity(line.quantity + 1) }
+            ? {
+                // Refresh name and price from the latest menu data while we're here.
+                ...line,
+                ...action.item,
+                quantity: clampQuantity(line.quantity + addedQuantity),
+                note: addedNote === "" ? line.note : addedNote,
+              }
             : line,
         ),
       };

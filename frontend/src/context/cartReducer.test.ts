@@ -6,6 +6,7 @@ import {
   initialCartState,
   MAX_QUANTITY_PER_LINE,
   NOTE_MAX_LENGTH,
+  willReplaceNote,
 } from "@/context/cartReducer";
 
 const burrito = { menuItemId: 1, name: "Frijoles con queso", categoryName: "Burritos", unitPriceCents: 3000 };
@@ -92,5 +93,48 @@ describe("getCartTotals", () => {
 
   it("is zero for an empty cart", () => {
     expect(getCartTotals([])).toEqual({ itemCount: 0, subtotalCents: 0 });
+  });
+});
+
+describe("cartReducer add with quantity and note (item detail screen)", () => {
+  const empty = cartReducer(initialCartState, { type: "load", lines: [] });
+
+  it("adds a new line with the given quantity and trimmed note", () => {
+    const state = cartReducer(empty, { type: "add", item: burrito, quantity: 3, note: "  sin cebolla " });
+    expect(state.lines).toEqual([{ ...burrito, quantity: 3, note: "sin cebolla" }]);
+  });
+
+  it("sums quantity onto an existing line, clamped to the maximum", () => {
+    const once = cartReducer(empty, { type: "add", item: burrito, quantity: 15 });
+    const twice = cartReducer(once, { type: "add", item: burrito, quantity: 10 });
+    expect(twice.lines[0].quantity).toBe(MAX_QUANTITY_PER_LINE);
+  });
+
+  it("replaces the note when a different non-empty note is added", () => {
+    const once = cartReducer(empty, { type: "add", item: burrito, note: "sin cebolla" });
+    const twice = cartReducer(once, { type: "add", item: burrito, note: "salsa aparte" });
+    expect(twice.lines[0]).toMatchObject({ quantity: 2, note: "salsa aparte" });
+  });
+
+  it("keeps the existing note when the new one is empty", () => {
+    const once = cartReducer(empty, { type: "add", item: burrito, note: "sin cebolla" });
+    const twice = cartReducer(once, { type: "add", item: burrito });
+    expect(twice.lines[0].note).toBe("sin cebolla");
+  });
+
+  it("never adds fewer than 1", () => {
+    const state = cartReducer(empty, { type: "add", item: burrito, quantity: 0 });
+    expect(state.lines[0].quantity).toBe(1);
+  });
+});
+
+describe("willReplaceNote", () => {
+  const lines = [{ ...burrito, quantity: 1, note: "sin cebolla" }];
+
+  it("is true only when a different non-empty note would overwrite one", () => {
+    expect(willReplaceNote(lines, burrito.menuItemId, "salsa aparte")).toBe(true);
+    expect(willReplaceNote(lines, burrito.menuItemId, " sin cebolla ")).toBe(false);
+    expect(willReplaceNote(lines, burrito.menuItemId, "")).toBe(false);
+    expect(willReplaceNote(lines, montada.menuItemId, "salsa aparte")).toBe(false);
   });
 });

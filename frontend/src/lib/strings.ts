@@ -31,6 +31,23 @@ export const strings = {
       `Ya no está disponible: ${names.join(", ")}. Lo quitamos de tu pedido.`,
     dismissNotice: "Cerrar aviso",
   },
+  item: {
+    backLabel: "Regresar al menú",
+    chooseLegend: "¿Cómo lo quieres?",
+    required: "Requerido",
+    variant: { burrito: "Burrito", montada: "Montada · con queso gratinado" },
+    notesLabel: "Instrucciones especiales",
+    notesPlaceholder: "Ej. sin cebolla, salsa aparte…",
+    add: (total: string) => `Agregar · ${total}`,
+    noteReplaced: (name: string) => `Actualizamos las instrucciones de ${name}.`,
+    added: (quantity: number, name: string) => `Agregaste ${quantity} × ${name} a tu pedido.`,
+  },
+  cartSidebar: {
+    title: "Tu pedido",
+    empty: "Agrega algo del menú para empezar.",
+    subtotal: (itemCount: number) => `Subtotal (${itemCount} ${itemCount === 1 ? "producto" : "productos"})`,
+    continue: (total: string) => `Continuar · ${total}`,
+  },
   tabBar: {
     navLabel: "Navegación principal",
     menu: "Menú",

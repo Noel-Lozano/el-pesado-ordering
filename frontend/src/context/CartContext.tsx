@@ -17,7 +17,7 @@ interface CartContextValue {
   hasLoaded: boolean;
   itemCount: number;
   subtotalCents: number;
-  addItem: (item: CartItemInput) => void;
+  addItem: (item: CartItemInput, options?: { quantity?: number; note?: string }) => void;
   setQuantity: (menuItemId: number, quantity: number) => void;
   setNote: (menuItemId: number, note: string) => void;
   removeItem: (menuItemId: number) => void;
@@ -50,7 +50,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       hasLoaded: state.hasLoaded,
       itemCount,
       subtotalCents,
-      addItem: (item) => dispatch({ type: "add", item }),
+      addItem: (item, options) => dispatch({ type: "add", item, quantity: options?.quantity, note: options?.note }),
       setQuantity: (menuItemId, quantity) => dispatch({ type: "setQuantity", menuItemId, quantity }),
       setNote: (menuItemId, note) => dispatch({ type: "setNote", menuItemId, note }),
       removeItem: (menuItemId) => dispatch({ type: "remove", menuItemId }),
