@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>04 · Checkout</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&amp;family=Nunito:wght@400;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1B2A5C}a:hover{color:#C62A1E}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #FFFFFF; font-family: 'Nunito', system-ui, sans-serif; color: #1B2A5C">
+
+<header style="height: 104px; box-sizing: border-box; padding: 48px 16px 0; background: #1B2A5C; display: flex; align-items: center; gap: 12px">
+<button type="button" aria-label="Regresar" style="width: 44px; height: 44px; border: none; border-radius: 4px; background: #FFD23F; display: flex; align-items: center; justify-content: center; padding: 0">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="#1B2A5C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+</button>
+<h1 style="margin: 0; font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 24px; color: #FFFFFF">Confirmar pedido</h1>
+</header>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 14px">
+
+<section style="background: #FFFFFF; border: 2px solid #1B2A5C; border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 900">Tus datos</h2>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 800">Nombre
+<input type="text" placeholder="¿A nombre de quién?" style="height: 46px; box-sizing: border-box; padding: 0 12px; border: 2px solid #1B2A5C; border-radius: 4px; font-family: 'Nunito', sans-serif; font-size: 16px; color: #1B2A5C; background: #FFF8F2">
+</label>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="tel" style="font-size: 14px; font-weight: 800">Teléfono celular</label>
+<div style="display: flex; gap: 8px">
+<select aria-label="Código de país" style="height: 46px; padding: 0 8px; border: 2px solid #1B2A5C; border-radius: 4px; font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; color: #1B2A5C; background: #FFD23F">
+<option>MX +52</option>
+<option>US +1</option>
+</select>
+<input id="tel" type="tel" placeholder="10 dígitos" style="flex: 1; min-width: 0; height: 46px; box-sizing: border-box; padding: 0 12px; border: 2px solid #1B2A5C; border-radius: 4px; font-family: 'Nunito', sans-serif; font-size: 16px; color: #1B2A5C; background: #FFF8F2">
+</div>
+</div>
+</section>
+
+<section style="background: #FFFFFF; border: 2px solid #1B2A5C; border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 900">¿Cuándo lo recoges?</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<label style="display: flex; align-items: center; gap: 10px; height: 50px; box-sizing: border-box; padding: 0 12px; border: 2.5px solid #1B2A5C; border-radius: 4px; background: #FFF8F2; font-size: 15px; font-weight: 800">
+<input type="radio" name="when" checked="" style="width: 20px; height: 20px; margin: 0; accent-color: #F08A24">Lo antes posible</label>
+<label style="display: flex; align-items: center; gap: 10px; height: 50px; box-sizing: border-box; padding: 0 12px; border: 1.5px solid #1B2A5C; border-radius: 4px; background: #FFFFFF; font-size: 15px; font-weight: 800">
+<input type="radio" name="when" style="width: 20px; height: 20px; margin: 0; accent-color: #F08A24">Programar hora</label>
+</div>
+</section>
+
+<section style="background: #FFFFFF; border: 2px solid #1B2A5C; border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 16px; font-weight: 900">Pago</h2>
+<label style="display: flex; align-items: center; gap: 12px; height: 54px; box-sizing: border-box; padding: 0 12px; border: 2.5px solid #1B2A5C; border-radius: 4px; background: #FFF8F2; font-size: 15px; font-weight: 800">
+<input type="radio" name="pay" checked="" style="width: 20px; height: 20px; margin: 0; accent-color: #F08A24">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="1.5" stroke="#1B2A5C" stroke-width="2.2"></rect><circle cx="12" cy="12" r="2.6" stroke="#1B2A5C" stroke-width="2.2"></circle></svg>
+<span style="flex: 1">Efectivo al recoger</span>
+</label>
+<div style="display: flex; align-items: center; gap: 12px; height: 54px; box-sizing: border-box; padding: 0 12px; border: 1.5px dashed #8A7A6E; border-radius: 4px; background: #FFFFFF; color: #5A4636; font-size: 15px; font-weight: 800">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="1.5" stroke="#5A4636" stroke-width="2.2"></rect><path d="M2.5 10h19" stroke="#5A4636" stroke-width="2.2"></path></svg>
+<span style="flex: 1">Tarjeta</span>
+<span style="padding: 3px 8px; border-radius: 4px; background: #E9C9AE; color: #1B2A5C; font-size: 12px; font-weight: 900">Próximamente</span>
+</div>
+</section>
+
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 2px solid #1B2A5C; border-radius: 6px; background: #FFD23F">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; font-weight: 800">4 productos · recoger en tienda</span>
+<span style="font-family: 'Lilita One', sans-serif; font-size: 22px">$185 MXN</span>
+</div>
+<a href="#" style="font-weight: 900; font-size: 14px">Ver detalle</a>
+</div>
+</div>
+
+<div style="position: absolute; left: 0; bottom: 0; width: 390px; box-sizing: border-box; padding: 12px 16px 24px; background: #FFFFFF; border-top: 2px solid #1B2A5C; display: flex; flex-direction: column; gap: 8px">
+<p style="margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: #5A4636">Te mandamos un código por SMS para confirmar.</p>
+<button type="button" style="height: 54px; border: 2px solid #1B2A5C; border-radius: 6px; background: #F08A24; color: #1B2A5C; font-family: 'Lilita One', sans-serif; font-size: 20px; box-shadow: 3px 3px 0 #1B2A5C">Enviar código por SMS</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
