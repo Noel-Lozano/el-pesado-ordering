@@ -135,3 +135,11 @@ export function createOrder(request: CreateOrderRequest, token: string, idempote
 export function getOrder(orderId: string, token: string): Promise<Order> {
   return apiFetch<Order>(`/orders/${encodeURIComponent(orderId)}`, { token, redirectOnUnauthorized: false });
 }
+
+// TODO(api): the backend has no "list my orders" endpoint (ADR-004 Gaps).
+// Until it exists, the Pedidos tab opens the last order saved on this device
+// (lib/lastOrder.ts) and nothing calls this. Once the endpoint lands, call it
+// here with the token and use it from components/account/OrdersTabView.tsx.
+export function listMyOrders(): Promise<Order[]> {
+  return Promise.reject(new Error("listMyOrders: GET /orders for the current customer is not implemented yet"));
+}

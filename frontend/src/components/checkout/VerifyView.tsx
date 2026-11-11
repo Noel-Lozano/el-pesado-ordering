@@ -8,6 +8,7 @@ import { useCart } from "@/context/CartContext";
 import { useNow } from "@/hooks/useNow";
 import { clearCheckoutDraft, loadCheckoutDraft } from "@/lib/checkoutDraft";
 import { isTokenUsable } from "@/lib/jwt";
+import { saveLastOrderId } from "@/lib/lastOrder";
 import { strings } from "@/lib/strings";
 import type { Order } from "@/types/order";
 
@@ -34,6 +35,8 @@ export function VerifyView() {
 
   function handleOrderPlaced(order: Order) {
     setPlacedOrderId(order.id);
+    // So the Pedidos tab can reopen it.
+    saveLastOrderId(order.id);
     clearCheckoutDraft();
     clearCart();
     // replace, not push: "back" from the order page must not return here and resubmit.

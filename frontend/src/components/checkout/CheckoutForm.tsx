@@ -12,6 +12,7 @@ import { ApiError, sendCode } from "@/lib/api";
 import { loadCheckoutDraft, saveCheckoutDraft } from "@/lib/checkoutDraft";
 import { isTokenUsable } from "@/lib/jwt";
 import { formatMXN } from "@/lib/money";
+import { describeNextOpening } from "@/lib/nextOpening";
 import { normalizePhone, type PhoneCountry, splitE164 } from "@/lib/phone";
 import {
   getNextOpening,
@@ -19,11 +20,9 @@ import {
   isAsapAvailable,
   isShopOpen,
   latestAvailableFrom,
-  type NextOpening,
   type Pickup,
 } from "@/lib/pickup";
 import { strings } from "@/lib/strings";
-import { formatClockTime } from "@/lib/time";
 import { createUuid } from "@/lib/uuid";
 import type { MenuResponse } from "@/types/menu";
 
@@ -35,16 +34,6 @@ interface FormErrors {
   phone?: string;
   pickup?: string;
   form?: string;
-}
-
-function describeNextOpening(next: NextOpening): string {
-  const when =
-    next.daysFromToday === 0
-      ? strings.checkout.today
-      : next.daysFromToday === 1
-        ? strings.checkout.tomorrow
-        : (strings.checkout.dayNames[next.dayOfWeek] ?? "");
-  return strings.checkout.nextOpening(when, formatClockTime(next.open));
 }
 
 function sendCodeErrorMessage(error: unknown): string {

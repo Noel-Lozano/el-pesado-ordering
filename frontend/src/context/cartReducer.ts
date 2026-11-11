@@ -37,6 +37,8 @@ export type CartAction =
   | { type: "setQuantity"; menuItemId: number; quantity: number }
   | { type: "setNote"; menuItemId: number; note: string }
   | { type: "remove"; menuItemId: number }
+  // After re-validating against the latest menu (see cartReconcile.ts).
+  | { type: "replaceLines"; lines: CartLine[] }
   | { type: "clear" };
 
 export const initialCartState: CartState = { lines: [], hasLoaded: false };
@@ -88,6 +90,9 @@ export function cartReducer(state: CartState, action: CartAction): CartState {
 
     case "remove":
       return { ...state, lines: state.lines.filter((line) => line.menuItemId !== action.menuItemId) };
+
+    case "replaceLines":
+      return { ...state, lines: action.lines };
 
     case "clear":
       return { ...state, lines: [] };
