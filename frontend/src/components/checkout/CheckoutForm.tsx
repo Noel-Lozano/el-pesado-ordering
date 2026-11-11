@@ -3,13 +3,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type SubmitEvent, useState } from "react";
+import { PaymentOptions } from "@/components/checkout/PaymentOptions";
 import { PhoneInput } from "@/components/checkout/PhoneInput";
 import { PickupTimePicker } from "@/components/checkout/PickupTimePicker";
+import { BottomActionBar } from "@/components/ui/BottomActionBar";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Notice } from "@/components/ui/Notice";
 import { useAuth } from "@/context/AuthContext";
 import { type CartLine, getCartTotals } from "@/context/cartReducer";
 import { useNow } from "@/hooks/useNow";
 import { ApiError, sendCode } from "@/lib/api";
 import { loadCheckoutDraft, saveCheckoutDraft } from "@/lib/checkoutDraft";
+import { getCheckoutHint, NAME_MAX_LENGTH } from "@/lib/checkoutHint";
 import { isTokenUsable } from "@/lib/jwt";
 import { formatMXN } from "@/lib/money";
 import { describeNextOpening } from "@/lib/nextOpening";
@@ -26,15 +32,8 @@ import { strings } from "@/lib/strings";
 import { createUuid } from "@/lib/uuid";
 import type { MenuResponse } from "@/types/menu";
 
-const NAME_MAX_LENGTH = 60;
 const ASAP: Pickup = { kind: "asap" };
-
-interface FormErrors {
-  name?: string;
-  phone?: string;
-  pickup?: string;
-  form?: string;
-}
+const HINT_ID = "checkout-pista";
 
 function sendCodeErrorMessage(error: unknown): string {
   return error instanceof ApiError && error.code === "network_error"
@@ -47,6 +46,9 @@ interface CheckoutFormProps {
   lines: CartLine[];
 }
 
+// Screen 04 · Confirmar pedido: name, phone, pickup time and payment on one
+// screen. The button stays disabled until everything is valid, with a hint
+// saying what's missing.
 export function CheckoutForm({ menu, lines }: CheckoutFormProps) {
   const router = useRouter();
   const now = useNow();
@@ -61,29 +63,29 @@ export function CheckoutForm({ menu, lines }: CheckoutFormProps) {
   const [country, setCountry] = useState<PhoneCountry>(savedDraft?.country ?? rememberedPhone?.country ?? "MX");
   const [phoneInput, setPhoneInput] = useState(savedDraft?.phoneInput ?? rememberedPhone?.nationalNumber ?? "");
   const [selectedPickup, setSelectedPickup] = useState<Pickup | null>(savedDraft?.pickup ?? null);
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (now === null) {
-    return <p className="py-12 text-center text-zinc-600 dark:text-zinc-400">{strings.checkout.loading}</p>;
+    return (
+      <p role="status" className="py-12 text-center font-bold text-muted">
+        {strings.checkout.loading}
+      </p>
+    );
   }
-
-  const backToCartLink = (
-    <Link href="/cart" className="flex min-h-11 items-center justify-center font-medium underline underline-offset-4">
-      {strings.checkout.backToCart}
-    </Link>
-  );
 
   if (!isShopOpen(now, menu.shop)) {
     const nextOpening = getNextOpening(now, menu.shop);
     return (
-      <div className="flex flex-col gap-4">
-        <section className="rounded-xl bg-amber-100 p-4 text-amber-950 dark:bg-amber-900/40 dark:text-amber-100">
-          <h2 className="text-xl font-bold">{strings.checkout.closedTitle}</h2>
-          <p className="mt-1">{strings.checkout.closedBody}</p>
-          {nextOpening && <p className="mt-1 font-semibold">{describeNextOpening(nextOpening)}</p>}
-        </section>
-        {backToCartLink}
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 py-6">
+        <Notice tone="warning">
+          <p className="text-base font-black">{strings.checkout.closedTitle}</p>
+          <p className="font-semibold">{strings.checkout.closedBody}</p>
+          {nextOpening && <p>{describeNextOpening(nextOpening)}</p>}
+        </Notice>
+        <ButtonLink href="/cart" variant="secondary">
+          {strings.checkout.backToCart}
+        </ButtonLink>
       </div>
     );
   }
@@ -103,141 +105,136 @@ export function CheckoutForm({ menu, lines }: CheckoutFormProps) {
     requestedPickup !== null &&
     (requestedPickup.kind === "asap" ? asapAvailable : slots.some((slot) => slot.time === requestedPickup.time));
   const pickup = isRequestedPickupValid ? requestedPickup : null;
-  const pickupError =
-    errors.pickup ?? (selectedPickup !== null && pickup === null ? strings.checkout.errors.pickupExpired : null);
 
+  const phone = normalizePhone(phoneInput, country);
+  // A returning customer whose login for this same phone is still good
+  // skips the WhatsApp code (decided 2026-11-04). If the server rejects the
+  // token anyway, the 401 handler brings them back here to get a code.
+  const isPhoneRemembered = phone !== null && auth.token !== null && auth.phone === phone && isTokenUsable(auth.token, now);
+  const hint = getCheckoutHint({
+    name,
+    phone,
+    hasValidPickup: pickup !== null,
+    hasExpiredPickup: selectedPickup !== null && pickup === null,
+    unavailableItemCount: unavailableLines.length,
+    isPhoneRemembered,
+  });
   const { itemCount, subtotalCents } = getCartTotals(lines);
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    const trimmedName = name.trim();
-    const phone = normalizePhone(phoneInput, country);
-    const nextErrors: FormErrors = {};
-    if (trimmedName.length === 0) {
-      nextErrors.name = strings.checkout.errors.nameRequired;
-    } else if (trimmedName.length > NAME_MAX_LENGTH) {
-      nextErrors.name = strings.checkout.errors.nameTooLong;
-    }
-    if (phone === null) {
-      nextErrors.phone = strings.checkout.errors.phoneInvalid[country];
-    }
-    if (pickup === null) {
-      nextErrors.pickup =
-        selectedPickup === null ? strings.checkout.errors.pickupRequired : strings.checkout.errors.pickupExpired;
-    }
-
-    setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0 || phone === null || pickup === null || unavailableLines.length > 0) {
-      return;
-    }
-
-    // A returning customer whose login for this same phone is still good
-    // skips the WhatsApp code (decided 2026-11-04). If the server rejects the
-    // token anyway, the 401 handler brings them back here to get a code.
-    const canSkipCode = auth.token !== null && auth.phone === phone && isTokenUsable(auth.token, new Date());
+    if (!hint.canSubmit || phone === null || pickup === null || isSubmitting) return;
 
     setIsSubmitting(true);
+    setFormError(null);
     try {
-      if (!canSkipCode) {
+      if (!isPhoneRemembered) {
         await sendCode(phone);
       }
       saveCheckoutDraft({
-        name: trimmedName,
+        name: name.trim(),
         country,
         phoneInput,
         phone,
         pickup,
+        // One key per checkout, reused on retries (ADR-002 #7).
         idempotencyKey: savedDraft?.idempotencyKey ?? createUuid(),
       });
       // Stays "submitting" while navigating so the button can't be tapped twice.
       router.push("/checkout/verify");
     } catch (error) {
-      setErrors({ form: sendCodeErrorMessage(error) });
+      setFormError(sendCodeErrorMessage(error));
       setIsSubmitting(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-      <p className="text-zinc-600 dark:text-zinc-400">
-        {strings.checkout.orderSummary(itemCount, formatMXN(subtotalCents))}
-      </p>
+    <form onSubmit={handleSubmit} noValidate className="flex flex-1 flex-col">
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-3.5 px-4 pb-6 pt-4">
+        {unavailableLines.length > 0 && (
+          <Notice tone="warning">
+            <p className="font-black">{strings.checkout.unavailableTitle}</p>
+            <ul className="list-disc pl-5">
+              {unavailableLines.map((line) => (
+                <li key={line.menuItemId}>{strings.cart.itemLabel(line.name, line.categoryName)}</li>
+              ))}
+            </ul>
+            <Link href="/cart" className="mt-1 inline-flex min-h-11 items-center underline underline-offset-4">
+              {strings.checkout.backToCart}
+            </Link>
+          </Notice>
+        )}
 
-      {unavailableLines.length > 0 && (
-        <section role="alert" className="rounded-xl bg-red-50 p-4 text-red-900 dark:bg-red-950 dark:text-red-100">
-          <h2 className="font-bold">{strings.checkout.unavailableTitle}</h2>
-          <p className="mt-1">{strings.checkout.unavailableBody}</p>
-          <ul className="mt-1 list-disc pl-5">
-            {unavailableLines.map((line) => (
-              <li key={line.menuItemId}>{strings.cart.itemLabel(line.name, line.categoryName)}</li>
-            ))}
-          </ul>
-        </section>
-      )}
+        <Card>
+          <fieldset className="flex flex-col gap-3">
+            <legend className="mb-3 text-base font-black">{strings.checkout.detailsLegend}</legend>
+            <label className="flex flex-col gap-1.5 text-sm font-extrabold">
+              {strings.checkout.nameLabel}
+              <input
+                type="text"
+                autoComplete="name"
+                value={name}
+                maxLength={NAME_MAX_LENGTH}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={strings.checkout.namePlaceholder}
+                className="h-[46px] rounded-sm border-2 border-navy bg-paper px-3 font-normal text-navy placeholder:text-muted"
+              />
+            </label>
+            <PhoneInput
+              id="celular"
+              country={country}
+              value={phoneInput}
+              onCountryChange={setCountry}
+              onChange={setPhoneInput}
+            />
+          </fieldset>
+        </Card>
 
-      <div className="flex flex-col gap-2">
-        <label htmlFor="nombre" className="font-semibold">
-          {strings.checkout.nameLabel}
-        </label>
-        <input
-          id="nombre"
-          type="text"
-          autoComplete="name"
-          value={name}
-          maxLength={NAME_MAX_LENGTH}
-          onChange={(event) => setName(event.target.value)}
-          aria-invalid={errors.name !== undefined}
-          aria-describedby={errors.name ? "nombre-ayuda nombre-error" : "nombre-ayuda"}
-          className="min-h-12 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700"
+        <PickupTimePicker
+          asapAvailable={asapAvailable}
+          slots={slots}
+          itemsAvailableFrom={itemsAvailableFrom}
+          value={pickup}
+          onChange={setSelectedPickup}
         />
-        <p id="nombre-ayuda" className="text-sm text-zinc-600 dark:text-zinc-400">
-          {strings.checkout.nameHint}
-        </p>
-        {errors.name && (
-          <p id="nombre-error" className="text-sm font-medium text-red-700 dark:text-red-400">
-            {errors.name}
+
+        <PaymentOptions />
+
+        <div className="flex items-center justify-between gap-3 rounded border-2 border-navy bg-yellow px-3.5 py-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[13px] font-extrabold">{strings.checkout.summaryLine(itemCount)}</span>
+            <span className="font-display text-[22px] tabular-nums">
+              {strings.cart.totalWithCurrency(formatMXN(subtotalCents))}
+            </span>
+          </div>
+          <Link
+            href="/cart"
+            aria-label={strings.checkout.seeDetailLabel}
+            className="flex min-h-11 items-center text-sm font-black underline underline-offset-4"
+          >
+            {strings.checkout.seeDetail}
+          </Link>
+        </div>
+      </div>
+
+      <BottomActionBar>
+        {formError ? (
+          <p role="alert" className="text-center text-[13px] font-extrabold text-red">
+            {formError}
+          </p>
+        ) : (
+          <p id={HINT_ID} aria-live="polite" className="text-center text-[13px] font-bold text-muted">
+            {hint.message}
           </p>
         )}
-      </div>
-
-      <PhoneInput
-        id="celular"
-        country={country}
-        value={phoneInput}
-        error={errors.phone ?? null}
-        onCountryChange={setCountry}
-        onChange={setPhoneInput}
-      />
-
-      <PickupTimePicker
-        asapAvailable={asapAvailable}
-        slots={slots}
-        itemsAvailableFrom={itemsAvailableFrom}
-        value={pickup}
-        error={pickupError}
-        onChange={(next) => {
-          setSelectedPickup(next);
-          setErrors((current) => ({ ...current, pickup: undefined }));
-        }}
-      />
-
-      {errors.form && (
-        <p role="alert" className="font-medium text-red-700 dark:text-red-400">
-          {errors.form}
-        </p>
-      )}
-
-      <div className="flex flex-col gap-2">
-        <button
-          type="submit"
-          disabled={isSubmitting || unavailableLines.length > 0}
-          className="flex min-h-14 items-center justify-center rounded-full bg-red-700 px-6 text-lg font-bold text-white active:bg-red-800 disabled:opacity-50"
-        >
-          {isSubmitting ? strings.checkout.submitting : strings.checkout.submit}
-        </button>
-        {backToCartLink}
-      </div>
+        <Button type="submit" disabled={!hint.canSubmit || isSubmitting} aria-describedby={HINT_ID}>
+          {isSubmitting
+            ? strings.checkout.submitting
+            : isPhoneRemembered
+              ? strings.checkout.submitRemembered
+              : strings.checkout.submit}
+        </Button>
+      </BottomActionBar>
     </form>
   );
 }

@@ -10,6 +10,9 @@ interface RadioCardProps {
   // Right-aligned extra, e.g. the variant's price.
   trailing?: ReactNode;
   isRequired?: boolean;
+  isDisabled?: boolean;
+  // Checkout's smaller options: 50px tall, 4px corners (mockup 04).
+  isCompact?: boolean;
   className?: string;
 }
 
@@ -24,13 +27,18 @@ export function RadioCard({
   children,
   trailing,
   isRequired = false,
+  isDisabled = false,
+  isCompact = false,
   className,
 }: RadioCardProps) {
   return (
     <label
       className={cx(
-        "flex min-h-[54px] cursor-pointer items-center gap-3 rounded border-navy px-3.5 text-base font-extrabold",
-        isChecked ? "border-[2.5px] bg-paper" : "border-[1.5px] bg-white",
+        "flex items-center gap-3 px-3.5 font-extrabold",
+        isCompact ? "min-h-[50px] rounded-sm text-[15px]" : "min-h-[54px] rounded text-base",
+        isDisabled
+          ? "cursor-not-allowed border-[1.5px] border-dashed border-disabled bg-white text-muted"
+          : cx("cursor-pointer border-navy", isChecked ? "border-[2.5px] bg-paper" : "border-[1.5px] bg-white"),
         className,
       )}
     >
@@ -40,6 +48,7 @@ export function RadioCard({
         value={value}
         checked={isChecked}
         required={isRequired}
+        disabled={isDisabled}
         onChange={() => onChange(value)}
         className="m-0 h-[22px] w-[22px] shrink-0 accent-orange"
       />
