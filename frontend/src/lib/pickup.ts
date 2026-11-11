@@ -55,6 +55,12 @@ function minutesToClockTime(totalMinutes: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+// "HH:MM" in the shop's timezone for an instant, e.g. a scheduled pickup's
+// ISO time, for display.
+export function toShopClockTime(instant: Date, timezone: string): string {
+  return minutesToClockTime(getShopClock(instant, timezone).minutesSinceMidnight);
+}
+
 function hoursForDay(shop: ShopInfo, dayOfWeek: number): ShopDayHours | undefined {
   return shop.hours.find((day) => day.dayOfWeek === dayOfWeek);
 }
