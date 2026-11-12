@@ -9,7 +9,12 @@ import { v1Router } from "./routes/index.js";
 export function createApp(): Express {
   const app = express();
 
-  // The frontend (Vercel) and API (Railway/Render) are on different origins.
+  // Railway terminates TLS at one proxy in front of the app. Trusting
+  // exactly one hop makes req.ip the real client IP (needed for rate
+  // limiting) without letting clients spoof it via X-Forwarded-For.
+  app.set("trust proxy", 1);
+
+  // The frontend (Vercel) and API (Railway) are on different origins.
   app.use(
     cors({
       origin: env.CORS_ORIGINS,

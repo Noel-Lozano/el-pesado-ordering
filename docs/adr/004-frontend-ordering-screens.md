@@ -326,7 +326,7 @@ doesn't change.
 
 ## Open questions
 
-- Which blob storage provider and public hostname will the photos use? This only affects `next.config.ts`.
+- ~~Which blob storage provider and public hostname will the photos use?~~ Resolved by ADR-005 (2026-11-11): a public Supabase Storage bucket, `menu-images`. Add `<project-ref>.supabase.co` with path `/storage/v1/object/public/menu-images/**` to `images.remotePatterns` in `next.config.ts`.
 
 ## Related
 

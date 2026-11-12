@@ -4,7 +4,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  STRIPE_SECRET_KEY: z.string().min(1, "STRIPE_SECRET_KEY is required"),
+  // Optional until Stripe payments are built (Phase 3); nothing reads it yet.
+  // Make it required again in the same change that first uses it.
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
   TWILIO_ACCOUNT_SID: z.string().min(1, "TWILIO_ACCOUNT_SID is required"),
   TWILIO_AUTH_TOKEN: z.string().min(1, "TWILIO_AUTH_TOKEN is required"),
   // Verify service with the shop's WhatsApp sender attached (ADR-003).
