@@ -24,7 +24,7 @@ Customer app (Web/PWA)  ──┐
                            ├──▶  Backend server  ──▶  Postgres (source of truth)
 Store screen (staff)   ──┘        │        │
                                    │        └──▶ Object storage (menu images)
-                                   └──▶ Stripe (card / OXXO / bank transfer)
+                                   └──▶ Stripe (card / bank transfer)
                                    └──▶ Twilio Verify (WhatsApp OTP)
 ```
 
@@ -39,10 +39,12 @@ Store screen (staff)   ──┘        │        │
 - **Database** — PostgreSQL. Relational by nature (orders → order items →
   menu items → customers), and we need transactional guarantees around
   capacity-slot booking.
-- **Object storage** — S3 or Cloudflare R2 for menu photos. Images are
-  never stored in Postgres; only their URLs are.
-- **Payments** — Stripe (Mexico entity). All online charges (card, OXXO,
-  bank transfer) are created in MXN, regardless of whether the card is
+- **Object storage** — a public Supabase Storage bucket (`menu-images`)
+  for menu photos, in the same Supabase project as the database
+  (ADR-005). Images are never stored in Postgres; only their public URLs
+  are.
+- **Payments** — Stripe (Mexico entity). All online charges (card,
+  bank transfer; OXXO is not offered, ADR-006) are created in MXN, regardless of whether the card is
   Mexican or American — the customer's own bank handles USD↔MXN
   conversion on their end, the same way any cross-border card purchase
   works. The app does not compute or store an exchange rate for these.
@@ -60,12 +62,15 @@ Store screen (staff)   ──┘        │        │
 - **Hosting** — split by concern rather than one platform for everything:
   - Frontend (Next.js) → **Vercel** (best-in-class Next.js delivery,
     free at this scale).
-  - Backend (API + WebSocket for the store screen) → **Railway** or
-    **Render**. Vercel's serverless model doesn't suit a long-running
+  - Backend (API + WebSocket for the store screen) → **Railway**
+    (ADR-005). Vercel's serverless model doesn't suit a long-running
     WebSocket connection, so the backend needs a platform built for
-    always-on processes.
-  - Database → **Neon** or **Supabase** (managed Postgres, connection
-    pooling built in — matters given lunch-rush concurrency, §5).
+    always-on processes. Deploys wait for CI and run migrations as a
+    pre-deploy step.
+  - Database → **Supabase** (managed Postgres, connection pooling built
+    in — matters given lunch-rush concurrency, §5).
+  - Menu photos → **Supabase Storage**, same project as the database
+    (ADR-005).
   - Domain/DNS → any registrar (e.g. Cloudflare Registrar, Namecheap),
     proxied through Cloudflare for free SSL and DDoS protection.
   - Estimated cost at this scale: roughly $10–25/month all-in, before
@@ -119,8 +124,6 @@ Key decisions embedded in this schema:
    same slot.
 4. Payment branches by method:
    - **Card** — charged immediately via Stripe.
-   - **OXXO** — voucher issued, order held as `awaiting_payment` until
-     Stripe confirms payment (asynchronous).
    - **Cash on pickup** — no charge now; `payment_status = unpaid` until
      staff mark it paid at handoff.
 5. Confirmed order is pushed to the store screen (WebSocket) and saved to
@@ -153,7 +156,7 @@ most exposed to no-shows. Mitigations, in order of what's built first:
 
 1. Verified phone number required for every order (OTP).
 2. `no_show_count` tracked per customer; after a threshold, cash-on-pickup
-   is disabled for that customer (they can still order with card/OXXO).
+   is disabled for that customer (they can still order with card).
 3. Grace period auto-release of unpicked scheduled orders, freeing the
    capacity slot.
 4. (Deferred by ADR-003) a pickup reminder message to reduce *accidental*

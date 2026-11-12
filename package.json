@@ -1,0 +1,14 @@
+{
+  "name": "el-pesado-ordering",
+  "private": true,
+  "description": "Convenience scripts only. backend/ and frontend/ are separate npm projects with their own dependencies.",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "dev:api": "npm --prefix backend run dev",
+    "dev:web": "npm --prefix frontend run dev",
+    "migrate": "npm --prefix backend run migrate:up"
+  }
+}

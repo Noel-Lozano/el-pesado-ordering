@@ -1,0 +1,184 @@
+# CI gate: every PR into main (and every push to main) must pass this
+# before it can merge or deploy. coding_standards.md §8: no merges to main
+# with failing tests or failing lint.
+#
+# To make it actually block merges, mark these jobs as required status
+# checks in GitHub branch protection for `main`:
+#   - Backend (typecheck, unit, integration)
+#   - Frontend (lint, typecheck, test, build)
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push to the same branch/PR cancels the older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Node 24 strips TypeScript types natively, which node-pg-migrate relies
+  # on to load the .ts migrations.
+  NODE_VERSION: "24"
+
+jobs:
+  backend:
+    name: Backend (typecheck, unit, integration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: el_pesado_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Throwaway CI database and placeholder credentials only. Twilio is
+    # mocked in the integration tests and nothing here talks to Stripe;
+    # these values exist only to satisfy env validation (src/config/env.ts).
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/el_pesado_test
+      TWILIO_ACCOUNT_SID: ACci_placeholder
+      TWILIO_AUTH_TOKEN: ci_placeholder
+      TWILIO_VERIFY_SERVICE_SID: VA00000000000000000000000000000000
+      JWT_SECRET: ci-only-jwt-secret
+      CORS_ORIGINS: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      # Called directly rather than via `npm run migrate:up`, which points
+      # at a .env file that doesn't exist in CI; DATABASE_URL comes from
+      # the job env above.
+      - name: Run migrations
+        run: npx node-pg-migrate up
+
+      - name: Seed menu
+        run: npm run seed:menu
+
+      - name: Integration tests (order-placement flow)
+        run: npm run test:integration
+
+  frontend:
+    name: Frontend (lint, typecheck, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+
+    # `next build` prerenders the menu pages (ISR, ADR-002 decision 3), which
+    # fetches GET /api/v1/menu at build time, as Vercel does against Railway.
+    # So the build needs a real, seeded API running, the same as in prod.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: el_pesado_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+      # Backend config for the API the build talks to. Same throwaway values
+      # as the backend job above.
+      NODE_ENV: test
+      PORT: 4000
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/el_pesado_test
+      TWILIO_ACCOUNT_SID: ACci_placeholder
+      TWILIO_AUTH_TOKEN: ci_placeholder
+      TWILIO_VERIFY_SERVICE_SID: VA00000000000000000000000000000000
+      JWT_SECRET: ci-only-jwt-secret
+      CORS_ORIGINS: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build and start the API for prerendering
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+          npx node-pg-migrate up
+          npm run seed:menu
+          nohup npm start > "$RUNNER_TEMP/api.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:4000/api/v1/menu > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not start within 30s"
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+
+      - name: Build
+        run: npm run build
+
+      - name: Show API log
+        if: failure()
+        run: cat "$RUNNER_TEMP/api.log" || true

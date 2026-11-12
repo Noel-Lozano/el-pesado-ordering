@@ -1,6 +1,6 @@
 # ADR-003: Phone verification over WhatsApp via Twilio Verify, no SMS
 
-**Status:** Proposed
+**Status:** Approved
 
 **Date:** 2026-10-29
 
