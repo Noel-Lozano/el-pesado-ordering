@@ -95,7 +95,7 @@ also holds backend deploys until it passes.
 |---|---|---|
 | Backend | Railway | Root directory `backend` · build `npm run build` · start `npm start` · pre-deploy `npx node-pg-migrate up` · "Wait for CI" on |
 | Frontend | Vercel | Root directory `frontend` · `NEXT_PUBLIC_API_BASE_URL` = the Railway URL |
-| Database | Supabase Postgres | `DATABASE_URL` on Railway = the Session Pooler string |
+| Database | Supabase Postgres | `DATABASE_URL` on Railway = the Session Pooler string + `?sslmode=no-verify` |
 | Menu photos | Supabase Storage | Public bucket `menu-images` |
 
 On Railway, set every variable from `backend/.env.example`, with

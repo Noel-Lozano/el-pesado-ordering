@@ -203,9 +203,11 @@ function validate(menu: MenuItem[]): void {
 async function main(): Promise<void> {
   validate(MENU);
 
+  // SSL comes from DATABASE_URL (e.g. ?sslmode=no-verify for Supabase), the
+  // same as the app's pool in src/db/pool.ts, so this also works against a
+  // local or CI Postgres that has no SSL.
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL, // Session Pooler string
-    ssl: { rejectUnauthorized: false },
   });
   const client = await pool.connect();
 
