@@ -4,8 +4,8 @@ import { defineConfig } from "vitest/config";
 // They create their own customer/orders and delete them afterwards.
 export default defineConfig({
   test: {
-    include: ["src/**/*.integration.test.ts"],
-    setupFiles: ["src/test/integrationSetup.ts"],
+    include: ["src/test/integration/**/*.test.ts"],
+    setupFiles: ["src/test/integration/setup.ts"],
     // One shared database: run files one at a time.
     fileParallelism: false,
     testTimeout: 30_000,

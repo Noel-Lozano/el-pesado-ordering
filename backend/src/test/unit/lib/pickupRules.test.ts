@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { AppError } from "../middleware/errorHandler.js";
-import { assertItemsAvailableAt, resolvePickupMinutes } from "./pickupRules.js";
+import { AppError } from "../../../middleware/errorHandler.js";
+import { assertItemsAvailableAt, resolvePickupMinutes } from "../../../lib/pickupRules.js";
 
 // Shop: America/Ciudad_Juarez, Mon–Sat 07:30–15:30. UTC-6 until 2026-11-01.
 // 2026-10-28 is a Wednesday; 2026-11-01 is a Sunday.

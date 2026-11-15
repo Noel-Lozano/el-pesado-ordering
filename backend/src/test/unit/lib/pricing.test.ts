@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeOrderTotal } from "./pricing.js";
+import { computeOrderTotal } from "../../../lib/pricing.js";
 
 const prices = new Map([
   [1, 3000],
