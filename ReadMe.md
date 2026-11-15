@@ -83,6 +83,21 @@ Each app has its own template, which lists and explains every variable:
   `backend/src/config/env.ts`, so a missing key stops the server right away.
 - [`frontend/.env.example`](frontend/.env.example): the backend API URL.
 
+### Tests
+
+Every test lives under a `src/test` folder, at the same path as the code
+it covers (e.g. `backend/src/lib/pricing.ts` is tested by
+`backend/src/test/unit/lib/pricing.test.ts`).
+
+| Folder | Command | Needs |
+|---|---|---|
+| `backend/src/test/unit/` | `npm --prefix backend test` | nothing |
+| `backend/src/test/integration/` | `npm --prefix backend run test:integration` | a migrated, seeded database in `DATABASE_URL` (it writes to it, then cleans up) |
+| `frontend/src/test/unit/` | `npm --prefix frontend test` | nothing |
+
+CI runs all three and saves their results as JSON artifacts
+(`test-results-backend`, `test-results-frontend`) on every run.
+
 ## Deployment
 
 Every PR into `main` runs [CI](.github/workflows/ci.yml): type checks,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapVerifyError, TWILIO_ERROR_CODES } from "./verifyErrors.js";
+import { mapVerifyError, TWILIO_ERROR_CODES } from "../../../lib/verifyErrors.js";
 
 describe("mapVerifyError", () => {
   it.each([

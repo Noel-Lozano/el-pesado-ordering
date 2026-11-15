@@ -6,13 +6,13 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 // verify code -> token -> POST /orders. Twilio is mocked; everything else is real.
 // Only Date is faked, so pg's own timers keep working.
 
-vi.mock("../lib/twilio.js", () => ({
+vi.mock("../../../lib/twilio.js", () => ({
   startWhatsAppVerification: vi.fn(async () => {}),
   isVerificationCodeApproved: vi.fn(async (_phone: string, code: string) => code === "123456"),
 }));
 
-const { createApp } = await import("../app.js");
-const { pool } = await import("../db/pool.js");
+const { createApp } = await import("../../../app.js");
+const { pool } = await import("../../../db/pool.js");
 
 const app = createApp();
 // Unassigned +1 555-01xx range, randomized so parallel runs don't collide.
