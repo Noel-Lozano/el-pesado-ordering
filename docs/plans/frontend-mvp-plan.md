@@ -75,7 +75,7 @@ The shop needs a mobile-first, guest-first ordering flow: Menu → Cart → Chec
    → **Treat the seed as the truth.** Commit `03_menu_display.ts` and `seed-menu.ts` in slice 1. Before running the seed, **delete the 5 hand-entered rows** (nothing references them). Otherwise the seed only marks them unavailable, and they stay in the table with prices 100× too low. The `price_cents > 0` filter stays as a safety net.
 7. **Customer name.** Checkout collects a name, but nothing stores it.
    → **Add an optional `customerName` (1–60 characters) to `POST /orders`, and write it to `customers.name` in the same transaction.** Pickup matching uses name plus the last 4 digits of the phone (architecture §4.7).
-8. **Payment method.** The existing endpoint accepts `card`, `oxxo`, and `bank_transfer`, but none of them are wired up.
+8. **Payment method.** The existing endpoint accepts `card` and `bank_transfer`, but none of them are wired up.
    → **Have the server reject anything except `cash` for now** with `payment_method_unavailable`, so nobody can create card orders that stay unpaid forever.
 9. **Capacity check.** Architecture §4.3 and §5 require a `capacity_slots` `FOR UPDATE` check on every order, but the spec doesn't mention it.
    → **Out of scope for this MVP.** It should be its own PR with an ADR, because slots aren't defined yet. Flagged here so it isn't forgotten. Optionally, I can reject `is_blocked` customers now, since that's one line.

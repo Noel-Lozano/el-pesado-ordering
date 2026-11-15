@@ -32,7 +32,7 @@ const createOrderSchema = z
   .object({
     fulfillmentType: z.enum(["asap", "scheduled"]),
     requestedTime: z.iso.datetime().optional(),
-    paymentMethod: z.enum(["card", "oxxo", "bank_transfer", "cash"]),
+    paymentMethod: z.enum(["card", "bank_transfer", "cash"]),
     customerName: z.string().trim().min(1).max(CUSTOMER_NAME_MAX_LENGTH).optional(),
     items: z.array(orderItemSchema).min(1).max(MAX_LINES_PER_ORDER),
   })
