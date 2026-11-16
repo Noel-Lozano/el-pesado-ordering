@@ -18,7 +18,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import AwareDatetime, BaseModel, Field
 
-from pesado_debug import __version__
+from pesado_debug import __version__, prompts
 from pesado_debug.config import ConfigMissingError, Settings
 from pesado_debug.core import artifacts, github, junit, rerun, testdb
 from pesado_debug.core.artifacts import ArtifactError
@@ -255,6 +255,21 @@ def build_server(settings: Settings) -> MCPServer:
                 settings, workspace=workspace, file=file, test_name=test_name, times=times
             )
         return tool_result(rerun.summarize(result), result)
+
+    @server.prompt(title="Investigate a CI failure")
+    def investigate_ci_failure(run_id: int | None = None) -> str:
+        """From a red CI run to a root-cause hypothesis with evidence and a flake verdict. No code edits."""
+        return prompts.investigate_ci_failure(run_id)
+
+    @server.prompt(title="Summarize CI failures")
+    def summarize_failures(run_id: int) -> str:
+        """A short, PR-comment-sized summary and bug report for a failed CI run."""
+        return prompts.summarize_failures(run_id)
+
+    @server.prompt(title="Write a regression test")
+    def write_regression_test(run_id: int | None = None, file: str | None = None) -> str:
+        """Write one failing test that reproduces a confirmed bug, prove it fails, and stop."""
+        return prompts.write_regression_test(run_id, file)
 
     logger.info(
         "server_built",
