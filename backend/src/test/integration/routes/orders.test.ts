@@ -72,7 +72,7 @@ async function countOrders(): Promise<number> {
 beforeAll(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(WEDNESDAY_1005);
-  burrito = await menuItem("Burritos", "Frijoles con queso");
+  burrito = await menuItem("Burritos", "Frijoles con carne");
   afterTwoItem = await menuItem("Después de las 2 PM", "Burrito de Discada");
 });
 
