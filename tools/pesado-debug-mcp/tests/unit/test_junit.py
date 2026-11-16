@@ -73,6 +73,24 @@ def test_local_absolute_paths_are_made_repo_relative() -> None:
     assert case.file == "backend/src/a.test.ts"
 
 
+def test_vitest_frame_with_function_name_and_no_parentheses() -> None:
+    """Real Vitest 5 output from the integration-db eval case."""
+    xml = (
+        '<testsuite name="s"><testcase name="src/test/integration/routes/orders.test.ts" '
+        'classname="src/test/integration/routes/orders.test.ts"><failure>'
+        "Error: Seeded menu item missing: Burritos / Frijoles con carne\n"
+        " \u276f menuItem src/test/integration/routes/orders.test.ts:37:23\n"
+        " \u276f src/test/integration/routes/orders.test.ts:75:13\n"
+        "</failure></testcase></testsuite>"
+    )
+    (case,) = junit.parse_report("x.xml", xml.encode(), workspace="backend").cases
+    assert case.message == "Error: Seeded menu item missing: Burritos / Frijoles con carne"
+    assert case.stack == (
+        "menuItem (backend/src/test/integration/routes/orders.test.ts:37:23)",
+        "backend/src/test/integration/routes/orders.test.ts:75:13",
+    )
+
+
 def test_stack_is_capped_at_eight_frames() -> None:
     frames = "".join(f" \u276f src/a.test.ts:{i}:1\n" for i in range(20))
     xml = f'<testsuite name="s"><testcase name="t"><failure>boom\n{frames}</failure></testcase></testsuite>'

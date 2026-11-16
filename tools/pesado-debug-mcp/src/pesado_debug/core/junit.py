@@ -28,8 +28,12 @@ SUITE_ERROR_NAME = "(suite error)"
 
 CaseStatus = Literal["passed", "failed", "error", "skipped"]
 
-# "U+276F path:1:2" (Vitest), "at fn (path:1:2)" or "at path:1:2" (V8 / Jest).
-_FRAME = re.compile(r"^\s*(?:\u276f|at)\s+(?:(?P<func>[^()]*?)\s+\()?(?P<loc>[^()\s]+?:\d+(?::\d+)?)\)?\s*$")
+# Vitest: "U+276F path:1:2" or "U+276F fn path:1:2". V8 / Jest: "at fn (path:1:2)" or "at path:1:2".
+_FRAME = re.compile(
+    r"^\s*(?:\u276f|at)\s+"
+    r"(?:(?P<func>[^()]*?)\s+\(|(?P<bare_func>[^\s()]+)\s+(?=[^\s()]+:\d))?"
+    r"(?P<loc>[^()\s]+?:\d+(?::\d+)?)\)?\s*$"
+)
 # Vitest's separator line, a run of U+23AF.
 _SEPARATOR = re.compile(r"^\s*\u23af+\s*$")
 _WORKSPACE_IN_PATH = re.compile(r"^.*?/((?:backend|frontend|tools)/.*)$")
@@ -129,7 +133,7 @@ def _message_and_stack(element: Element, paths: "_PathRewriter") -> tuple[str, t
     for line in (element.text or "").splitlines():
         match = _FRAME.match(line)
         if match:
-            frame = paths.frame(match.group("func"), match.group("loc"))
+            frame = paths.frame(match.group("func") or match.group("bare_func"), match.group("loc"))
             if frame is not None and len(frames) < MAX_STACK_FRAMES:
                 frames.append(frame)
             continue
