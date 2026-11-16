@@ -1,0 +1,12 @@
+# Eval case (ADR-007). The branch has exactly this one fault and is never merged.
+branch: eval/integration-db
+fault: >
+  In backend/src/test/integration/routes/orders.test.ts, the setup looks up
+  the menu item Burritos / "Frijoles con carne", which seed:menu doesn't
+  create. Every test in the file fails at setup. The root cause is test
+  data, not app code.
+expected:
+  category: test-data
+  suspect_file: backend/src/test/integration/routes/orders.test.ts
+  verdict: deterministic_fail
+run_id: 43791599351

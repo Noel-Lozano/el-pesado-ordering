@@ -1,0 +1,11 @@
+# Eval case (ADR-007). The branch has exactly this one fault and is never merged.
+branch: eval/unit-assertion
+fault: >
+  In backend/src/test/unit/lib/pricing.test.ts, the expected total in "sums
+  database price x quantity in centavos" is changed from 3 * 3000 + 6500 to
+  3 * 3000 + 6000. The code is right; the test is wrong.
+expected:
+  category: unit-test-bug
+  suspect_file: backend/src/test/unit/lib/pricing.test.ts
+  verdict: deterministic_fail
+run_id: 43791583132

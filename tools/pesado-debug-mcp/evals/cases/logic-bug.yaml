@@ -1,0 +1,12 @@
+# Eval case (ADR-007). The branch has exactly this one fault and is never merged.
+branch: eval/logic-bug
+fault: >
+  In backend/src/lib/pickupRules.ts, the is-open check compares
+  minutesSinceMidnight with <= instead of < against closing time, so an
+  order at exactly 15:30 is accepted. pickupRules.test.ts "rejects any order
+  while closed" catches it.
+expected:
+  category: app-logic-bug
+  suspect_file: backend/src/lib/pickupRules.ts
+  verdict: deterministic_fail
+run_id: 43791586855
