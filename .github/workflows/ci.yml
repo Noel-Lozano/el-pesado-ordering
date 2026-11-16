@@ -304,3 +304,43 @@ jobs:
 
       - name: Tests (unit + integration)
         run: uv run pytest
+
+  # Turns the backend and frontend JUnit artifacts into a markdown report on
+  # this run's Summary page (ADR-007). Runs even when tests fail, which is
+  # when the report matters. No secrets, no database. Always exits 0: the
+  # test jobs are what fail the build.
+  report:
+    name: Test report
+    needs: [backend, frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Nothing to download when both jobs failed before their tests; the
+      # report then says the run failed before tests ran.
+      - name: Download JUnit artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: junit-*
+          path: artifacts
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: tools/pesado-debug-mcp/uv.lock
+
+      - name: Write the job summary
+        working-directory: tools/pesado-debug-mcp
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          uv run --locked pesado-debug report
+          --from-dir "$GITHUB_WORKSPACE/artifacts"
+          --out "$GITHUB_STEP_SUMMARY"
+          --run-url "$RUN_URL"

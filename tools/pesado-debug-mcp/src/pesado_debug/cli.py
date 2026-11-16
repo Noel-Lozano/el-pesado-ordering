@@ -4,6 +4,7 @@
   pesado-debug init-test-db [--confirm DB]  mark the test DB as test (locks 1, 2; CLI only)
   pesado-debug reset                        truncate + baseline (locks 1-3)
   pesado-debug seed SCENARIO [--at ISO] [--no-reset]
+  pesado-debug report --from-dir DIR --out FILE [--title T] [--run-url URL]
 
 This is the only module allowed to print: it talks to a person on stdout
 (ruff T20 is ignored for this file only). The MCP server never imports it.
@@ -15,10 +16,11 @@ import json
 import sys
 from collections.abc import Sequence
 from datetime import datetime
+from pathlib import Path
 from typing import cast, get_args
 
 from pesado_debug.config import ConfigMissingError, Settings
-from pesado_debug.core import migrate, testdb
+from pesado_debug.core import migrate, report, testdb
 from pesado_debug.core.node_runner import NodeRunnerError
 from pesado_debug.core.scenarios import REGISTRY, ScenarioError, ScenarioName
 from pesado_debug.core.shop_time import NaiveDatetimeError
@@ -55,6 +57,12 @@ def _parser() -> argparse.ArgumentParser:
     seed.add_argument(
         "--no-reset", action="store_true", help="Keep existing rows instead of truncating first."
     )
+
+    rep = commands.add_parser("report", help="Append a markdown test report built from JUnit XML files.")
+    rep.add_argument("--from-dir", required=True, type=Path, help="Folder searched recursively for *.xml.")
+    rep.add_argument("--out", required=True, type=Path, help="File to append to, e.g. $GITHUB_STEP_SUMMARY.")
+    rep.add_argument("--title", help="Optional heading prefix.")
+    rep.add_argument("--run-url", help="Link shown when no test results exist.")
     return parser
 
 
@@ -95,6 +103,13 @@ def _init_test_db(settings: Settings, confirm: str | None) -> int:
 
 def run(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "report":
+        # Needs no settings, token or database. Always exits 0: the report describes
+        # failures; the test jobs are what fail the build.
+        report.append_report(
+            report.build_report(args.from_dir, title=args.title, run_url=args.run_url), args.out
+        )
+        return 0
     try:
         settings = Settings()
         match args.command:
