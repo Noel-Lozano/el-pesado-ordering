@@ -1,0 +1,4 @@
+2026-11-15T20:01:00.1234567Z Starting job
+2026-11-15T20:01:01.1234567Z doing work
+2026-11-15T20:01:02.1234567Z ##[error]Something broke
+2026-11-15T20:01:03.1234567Z after the error

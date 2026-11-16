@@ -1,0 +1,27 @@
+# Local test database for pesado-debug (ADR-007). Plain postgres:17, the same
+# image CI uses, bound to 127.0.0.1 only. Throwaway: never put real data here.
+#
+#   docker compose -f docker-compose.test.yml up -d
+#   uv run pesado-debug migrate-test-db
+#   uv run pesado-debug init-test-db
+#
+# PESADO_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54329/pesado_test
+#
+# The database is named pesado_test (not postgres) so that typing its name
+# back at init-test-db means something.
+name: pesado-debug-test
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pesado_test
+    ports:
+      - "127.0.0.1:54329:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pesado_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

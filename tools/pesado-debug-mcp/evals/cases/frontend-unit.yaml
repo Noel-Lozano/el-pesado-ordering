@@ -1,0 +1,10 @@
+# Eval case (ADR-007). The branch has exactly this one fault and is never merged.
+branch: eval/frontend-unit
+fault: >
+  In frontend/src/lib/money.ts, CENTAVOS_PER_PESO is 10 instead of 100, so
+  formatMXN shows ten times the price. frontend money.test.ts catches it.
+expected:
+  category: app-logic-bug
+  suspect_file: frontend/src/lib/money.ts
+  verdict: deterministic_fail
+run_id: 43791595937

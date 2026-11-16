@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="17" failures="0" errors="0" time="0.0402247">
+    <testsuite name="src/test/unit/lib/pickupRules.test.ts" timestamp="2026-11-16T01:44:16.058Z" hostname="ci-runner" tests="7" failures="0" errors="0" skipped="0" time="0.0156032">
+        <testcase classname="src/test/unit/lib/pickupRules.test.ts" name="resolvePickupMinutes &gt; ASAP while open returns now in shop time" time="0.0068029">
+        </testcase>
+        <testcase classname="src/test/unit/lib/pickupRules.test.ts" name="resolvePickupMinutes &gt; rejects any order while closed" time="0.0014269">
+        </testcase>
+        <testcase classname="src/test/unit/lib/pickupRules.test.ts" name="resolvePickupMinutes &gt; accepts a later time today up to and including closing" time="0.0006521">
+        </testcase>
+        <testcase classname="src/test/unit/lib/pickupRules.test.ts" name="resolvePickupMinutes &gt; rejects past, after-closing, missing, or other-day pickup times" time="0.0009648">
+        </testcase>
+        <testcase classname="src/test/unit/lib/pickupRules.test.ts" name="resolvePickupMinutes &gt; reads a UTC instant in shop time" time="0.0004129">
+        </testcase>
+        <testcase classname="src/test/unit/lib/pickupRules.test.ts" name="assertItemsAvailableAt &gt; allows all-day items any time and timed items from their start" time="0.0006663">
+        </testcase>
+        <testcase classname="src/test/unit/lib/pickupRules.test.ts" name="assertItemsAvailableAt &gt; rejects timed items before their start" time="0.0003948">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/test/unit/lib/pricing.test.ts" timestamp="2026-11-16T01:44:16.069Z" hostname="ci-runner" tests="3" failures="0" errors="0" skipped="0" time="0.010271">
+        <testcase classname="src/test/unit/lib/pricing.test.ts" name="computeOrderTotal &gt; sums database price x quantity in centavos" time="0.0041201">
+        </testcase>
+        <testcase classname="src/test/unit/lib/pricing.test.ts" name="computeOrderTotal &gt; is 0 for no lines" time="0.0005094">
+        </testcase>
+        <testcase classname="src/test/unit/lib/pricing.test.ts" name="computeOrderTotal &gt; refuses to price an item it has no price for" time="0.0018308">
+        </testcase>
+    </testsuite>
+    <testsuite name="src/test/unit/lib/verifyErrors.test.ts" timestamp="2026-11-16T01:44:16.072Z" hostname="ci-runner" tests="7" failures="0" errors="0" skipped="0" time="0.0143505">
+        <testcase classname="src/test/unit/lib/verifyErrors.test.ts" name="mapVerifyError &gt; maps Twilio 60200 to validation_error (400)" time="0.0056155">
+        </testcase>
+        <testcase classname="src/test/unit/lib/verifyErrors.test.ts" name="mapVerifyError &gt; maps Twilio 20404 to invalid_code (400)" time="0.0006287">
+        </testcase>
+        <testcase classname="src/test/unit/lib/verifyErrors.test.ts" name="mapVerifyError &gt; maps Twilio 60202 to too_many_attempts (429)" time="0.0005062">
+        </testcase>
+        <testcase classname="src/test/unit/lib/verifyErrors.test.ts" name="mapVerifyError &gt; maps Twilio 60203 to too_many_requests (429)" time="0.0004605">
+        </testcase>
+        <testcase classname="src/test/unit/lib/verifyErrors.test.ts" name="mapVerifyError &gt; maps Twilio 60212 to too_many_requests (429)" time="0.000542">
+        </testcase>
+        <testcase classname="src/test/unit/lib/verifyErrors.test.ts" name="mapVerifyError &gt; maps Twilio 60410 to too_many_requests (429)" time="0.0004327">
+        </testcase>
+        <testcase classname="src/test/unit/lib/verifyErrors.test.ts" name="mapVerifyError &gt; leaves unknown or missing codes to the caller" time="0.000646">
+        </testcase>
+    </testsuite>
+</testsuites>

@@ -80,11 +80,13 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # JUnit XML in reports/ is read by tools/pesado-debug-mcp (ADR-007).
       - name: Unit tests (src/test/unit)
         run: >-
           npm test --
-          --reporter=default --reporter=json
+          --reporter=default --reporter=json --reporter=junit
           --outputFile.json=test-results/backend-unit.json
+          --outputFile.junit=reports/junit-unit.xml
 
       # Called directly rather than via `npm run migrate:up`, which points
       # at a .env file that doesn't exist in CI; DATABASE_URL comes from
@@ -98,8 +100,9 @@ jobs:
       - name: Integration tests (src/test/integration, order-placement flow)
         run: >-
           npm run test:integration --
-          --reporter=default --reporter=json
+          --reporter=default --reporter=json --reporter=junit
           --outputFile.json=test-results/backend-integration.json
+          --outputFile.junit=reports/junit-integration.xml
 
       - name: Upload test results
         if: always()
@@ -107,6 +110,16 @@ jobs:
         with:
           name: test-results-backend
           path: backend/test-results/
+          if-no-files-found: ignore
+
+      # if: always() matters: without it, this step is skipped exactly when
+      # tests fail, which is when the report is needed.
+      - name: Upload JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-backend
+          path: backend/reports/
           if-no-files-found: ignore
 
   frontend:
@@ -171,8 +184,9 @@ jobs:
       - name: Unit tests (src/test/unit)
         run: >-
           npm test --
-          --reporter=default --reporter=json
+          --reporter=default --reporter=json --reporter=junit
           --outputFile.json=test-results/frontend-unit.json
+          --outputFile.junit=reports/junit-unit.xml
 
       - name: Upload test results
         if: always()
@@ -180,6 +194,14 @@ jobs:
         with:
           name: test-results-frontend
           path: frontend/test-results/
+          if-no-files-found: ignore
+
+      - name: Upload JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-frontend
+          path: frontend/reports/
           if-no-files-found: ignore
 
       - name: Build and start the API for prerendering
@@ -207,3 +229,118 @@ jobs:
       - name: Show API log
         if: failure()
         run: cat "$RUNNER_TEMP/api.log" || true
+
+  # tools/pesado-debug-mcp: the local debugging MCP server (ADR-007). A
+  # standalone uv project, so it gets its own job and never touches the
+  # app's Node toolchain.
+  debug-mcp:
+    name: Debug MCP (lint, types, unit, integration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tools/pesado-debug-mcp
+
+    # A throwaway database for the integration tests, which seed every
+    # scenario against the real migrations: this is what catches drift
+    # between core/schema.py and backend/migrations (ADR-007).
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pesado_debug_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PESADO_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pesado_debug_test
+      # A missing database URL fails the run instead of skipping integration tests.
+      PESADO_REQUIRE_INTEGRATION: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # node-pg-migrate (migrate-test-db) and seed:menu (rerun_test) need
+      # Node and backend/node_modules.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: tools/pesado-debug-mcp/uv.lock
+
+      - name: Install dependencies (locked)
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check
+
+      - name: Format check
+        run: uv run ruff format --check
+
+      - name: Type check
+        run: uv run mypy
+
+      - name: Migrate the test database
+        run: uv run pesado-debug migrate-test-db
+
+      - name: Mark it as a test database
+        run: uv run pesado-debug init-test-db --confirm pesado_debug_test
+
+      - name: Tests (unit + integration)
+        run: uv run pytest
+
+  # Turns the backend and frontend JUnit artifacts into a markdown report on
+  # this run's Summary page (ADR-007). Runs even when tests fail, which is
+  # when the report matters. No secrets, no database. Always exits 0: the
+  # test jobs are what fail the build.
+  report:
+    name: Test report
+    needs: [backend, frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Nothing to download when both jobs failed before their tests; the
+      # report then says the run failed before tests ran.
+      - name: Download JUnit artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: junit-*
+          path: artifacts
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: tools/pesado-debug-mcp/uv.lock
+
+      - name: Write the job summary
+        working-directory: tools/pesado-debug-mcp
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >-
+          uv run --locked pesado-debug report
+          --from-dir "$GITHUB_WORKSPACE/artifacts"
+          --out "$GITHUB_STEP_SUMMARY"
+          --run-url "$RUN_URL"

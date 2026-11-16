@@ -113,3 +113,21 @@ here cost real money and real customers standing in line.
   come from students on mobile between classes.
 - Store screen should be legible at a glance from a few feet away
   (large text, high contrast) — staff are reading it while working.
+
+## 12. Python (dev tooling only)
+
+Python is allowed only for standalone developer tools under `tools/`
+(ADR-007), never for app code.
+
+- One uv project per tool: `pyproject.toml` + committed `uv.lock`,
+  `src/` layout, Python ≥ 3.12. CI installs with `uv sync --locked`.
+- Type hints everywhere. `mypy --strict` (with the pydantic plugin)
+  must pass. No `Any` without a comment explaining why (same rule as
+  §2).
+- Formatter and linter: `ruff format` and `ruff check` (rules at least
+  `E,F,I,B,UP,S,T20,ASYNC`). No inline `noqa` without a reason.
+- Tests: `pytest`. Tests that need a database are marked
+  `@pytest.mark.integration` and run in CI.
+- SQL: parameterized queries only. Identifiers are composed with
+  `psycopg.sql`, never f-strings.
+- Subprocesses: argument lists only, never `shell=True`.

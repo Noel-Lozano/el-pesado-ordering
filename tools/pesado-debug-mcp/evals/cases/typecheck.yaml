@@ -1,0 +1,11 @@
+# Eval case (ADR-007). The branch has exactly this one fault and is never merged.
+branch: eval/typecheck
+fault: >
+  In backend/src/routes/orders.ts, MAX_QUANTITY_PER_LINE is declared as
+  number but assigned the string "20". tsc fails, so the backend job stops
+  before any test runs and there is no JUnit artifact.
+expected:
+  category: typecheck
+  suspect_file: backend/src/routes/orders.ts
+  verdict: no_junit
+run_id: 43791592528

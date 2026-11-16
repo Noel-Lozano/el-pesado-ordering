@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="2" failures="2" errors="0" time="0.01">
+    <testsuite name="src/test/unit/lib/evil.test.ts" tests="2" failures="2" errors="0" skipped="0" time="0.01">
+        <testcase classname="src/test/unit/lib/evil.test.ts" name="&lt;script&gt;alert(1)&lt;/script&gt; | breaks | the table" time="0.001">
+            <failure message="x">**bold** _it_ [link](http://evil.example) `code` &lt;/details&gt;
+```
+closing fence attempt
+````
+ ❯ src/test/unit/lib/evil.test.ts:3:1
+            </failure>
+        </testcase>
+        <testcase classname="src/test/unit/lib/evil.test.ts" name="back\slash ` tick ``` fence" time="0.001">
+            <failure message="y">plain failure</failure>
+        </testcase>
+    </testsuite>
+</testsuites>

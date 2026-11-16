@@ -1,0 +1,11 @@
+# Eval case (ADR-007). The branch has exactly this one fault and is never merged.
+branch: eval/flaky-timing
+fault: >
+  A new test, backend/src/test/unit/lib/clock.test.ts, asserts Date.now() %
+  2 === 0, so it passes about half the time. Recorded on a run where it
+  failed (rerun CI until it does).
+expected:
+  category: flaky-test
+  suspect_file: backend/src/test/unit/lib/clock.test.ts
+  verdict: flaky
+run_id: 43791815993  # the failing dispatch (an earlier one passed)
