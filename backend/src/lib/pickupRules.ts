@@ -72,7 +72,7 @@ export function resolvePickupMinutes(now: Date, fulfillmentType: FulfillmentType
   const isOpen =
     today !== undefined &&
     nowClock.minutesSinceMidnight >= clockTimeToMinutes(today.open) &&
-    nowClock.minutesSinceMidnight < clockTimeToMinutes(today.close);
+    nowClock.minutesSinceMidnight <= clockTimeToMinutes(today.close);
 
   if (!today || !isOpen) {
     throw new AppError("shop_closed", "The shop is not taking orders right now", 409);
