@@ -207,3 +207,37 @@ jobs:
       - name: Show API log
         if: failure()
         run: cat "$RUNNER_TEMP/api.log" || true
+
+  # tools/pesado-debug-mcp: the local debugging MCP server (ADR-007). A
+  # standalone uv project, so it gets its own job and never touches the
+  # app's Node toolchain.
+  debug-mcp:
+    name: Debug MCP (lint, types, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tools/pesado-debug-mcp
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: tools/pesado-debug-mcp/uv.lock
+
+      - name: Install dependencies (locked)
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check
+
+      - name: Format check
+        run: uv run ruff format --check
+
+      - name: Type check
+        run: uv run mypy
+
+      - name: Tests
+        run: uv run pytest

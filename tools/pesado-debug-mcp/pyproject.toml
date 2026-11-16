@@ -1,0 +1,60 @@
+[project]
+name = "pesado-debug"
+version = "0.1.0"
+description = "Local MCP server for investigating El Pesado test and CI failures (ADR-007)."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "defusedxml>=0.7.1",
+    "httpx>=0.28.1",
+    "mcp[cli]>=2.3,<3",
+    "psycopg[binary]>=3.3.9",
+    "pydantic>=2.14.3",
+    "pydantic-settings>=2.16.3",
+    "tzdata>=2026.6",
+]
+
+[project.scripts]
+pesado-debug-mcp = "pesado_debug.server:main"
+
+[build-system]
+requires = ["uv_build>=0.9,<0.14"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# T20 bans print(): stdout is the MCP protocol stream, so a stray print
+# corrupts it. S = bandit (security), ASYNC = blocking calls in async code.
+select = ["E", "F", "I", "B", "UP", "S", "T20", "ASYNC", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# pytest uses bare assert by design.
+"tests/**" = ["S101"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "integration: needs a migrated, marked Postgres test DB (PESADO_TEST_DATABASE_URL)",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "respx>=0.23.1",
+    "ruff>=0.17.5",
+    "types-defusedxml>=0.7.0.20260504",
+]

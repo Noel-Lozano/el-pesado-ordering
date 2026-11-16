@@ -2,7 +2,19 @@
   "mcpServers": {
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=kusintnuaryliktrwijf&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching"
+      "url": "https://mcp.supabase.com/mcp?project_ref=kusintnuaryliktrwijf&read_only=true&features=database%2Cdebugging%2Cdevelopment%2Cdocs"
+    },
+    "pesado-debug": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "tools/pesado-debug-mcp", "pesado-debug-mcp"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN:-}",
+        "GITHUB_OWNER": "${GITHUB_OWNER:-}",
+        "GITHUB_REPO": "${GITHUB_REPO:-}",
+        "PESADO_TEST_DATABASE_URL": "${PESADO_TEST_DATABASE_URL:-}",
+        "PESADO_TEST_DB_ALLOWED_HOST": "${PESADO_TEST_DB_ALLOWED_HOST:-}"
+      }
     }
   }
 }
