@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- A suite-level error with no testcase, as some reporters emit when a file fails before any test runs. -->
+<testsuites name="vitest tests" tests="0" failures="0" errors="1" time="0">
+    <testsuite name="src/test/integration/routes/orders.test.ts" tests="0" failures="0" errors="1" skipped="0" time="0">
+        <error message="connect ECONNREFUSED 127.0.0.1:5432" type="Error">
+Error: connect ECONNREFUSED 127.0.0.1:5432
+ ❯ node_modules/pg-pool/index.js:45:11
+ ❯ src/test/integration/routes/orders.test.ts:73:3
+        </error>
+    </testsuite>
+</testsuites>

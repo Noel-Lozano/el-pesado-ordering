@@ -124,6 +124,24 @@ class GitHubClient:
             raise GitHubError(_http_error_message(response, path))
         return response
 
+    async def download(self, path: str, *, max_bytes: int) -> bytes:
+        """GET a binary body, aborting once it passes `max_bytes` (a size header can lie)."""
+        try:
+            async with self._http.stream("GET", path) as response:
+                if response.status_code >= 400:
+                    await response.aread()
+                    raise GitHubError(_http_error_message(response, path))
+                chunks: list[bytes] = []
+                received = 0
+                async for chunk in response.aiter_bytes():
+                    received += len(chunk)
+                    if received > max_bytes:
+                        raise GitHubError(f"Download of {path} passed the {max_bytes}-byte limit; aborted.")
+                    chunks.append(chunk)
+        except httpx.HTTPError as exc:
+            raise GitHubError(f"Could not reach GitHub ({type(exc).__name__}): {exc}") from exc
+        return b"".join(chunks)
+
     async def get_model[M: BaseModel](
         self, model: type[M], path: str, params: Mapping[str, str | int] | None = None
     ) -> M:

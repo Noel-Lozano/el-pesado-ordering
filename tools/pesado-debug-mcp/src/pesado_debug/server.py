@@ -9,7 +9,7 @@ structured content validated against the tool's output model. Known failures
 import logging
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
-from typing import Annotated
+from typing import Annotated, Literal
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -18,10 +18,12 @@ from pydantic import BaseModel, Field
 
 from pesado_debug import __version__
 from pesado_debug.config import ConfigMissingError, Settings
-from pesado_debug.core import github
+from pesado_debug.core import artifacts, github, junit
+from pesado_debug.core.artifacts import ArtifactError
 from pesado_debug.core.github import GitHubClient, GitHubError
+from pesado_debug.core.junit import JUnitError
 from pesado_debug.logging_setup import configure_logging
-from pesado_debug.models import FailedRuns, RunLogs
+from pesado_debug.models import FailedRuns, FailingTests, RunLogs
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,7 @@ INSTRUCTIONS = (
 GITHUB_READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 
 # Errors whose message is written for the agent; anything else is a bug.
-EXPECTED_ERRORS: tuple[type[Exception], ...] = (ConfigMissingError, GitHubError)
+EXPECTED_ERRORS: tuple[type[Exception], ...] = (ConfigMissingError, GitHubError, ArtifactError, JUnitError)
 
 
 def tool_result(summary: str, model: BaseModel) -> CallToolResult:
@@ -107,6 +109,38 @@ def build_server(settings: Settings) -> MCPServer:
                     client, run_id=run_id, job_name=job_name, tail_lines=tail_lines, grep=grep
                 )
         return tool_result(github.summarize_logs(result), result)
+
+    @server.tool(annotations=GITHUB_READ_ONLY)
+    async def get_failing_tests(
+        source: Annotated[
+            Literal["local", "ci"],
+            Field(
+                description=(
+                    "local: <workspace>/reports/*.xml on disk. ci: the run's junit-<workspace> artifact."
+                )
+            ),
+        ],
+        workspace: Annotated[Literal["backend", "frontend"], Field(description="Which npm project's tests.")],
+        run_id: Annotated[
+            int | None, Field(description="GitHub Actions run ID; required when source='ci'.")
+        ] = None,
+    ) -> Annotated[CallToolResult, FailingTests]:
+        """Failing tests from JUnit reports: file, test name, message and a trimmed stack.
+
+        Returns at most 25 failures; stacks keep the first 8 frames inside the repo. If a CI run has
+        no JUnit artifact, the failure happened before tests ran: use get_run_logs instead.
+        """
+        with agent_errors():
+            if source == "local":
+                raw = artifacts.read_local_reports(settings.pesado_repo_root, workspace)
+            else:
+                if run_id is None:
+                    raise ToolError("run_id is required when source='ci'.")
+                async with github_client("get_failing_tests") as client:
+                    raw = await artifacts.download_ci_reports(client, run_id, workspace)
+            parsed = junit.parse_reports(raw, workspace=workspace, repo_root=str(settings.pesado_repo_root))
+            result = junit.to_failing_tests(parsed)
+        return tool_result(junit.summarize(result), result)
 
     logger.info(
         "server_built",

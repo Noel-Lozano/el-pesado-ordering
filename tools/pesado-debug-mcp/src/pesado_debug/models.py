@@ -6,6 +6,7 @@ only wraps them.
 """
 
 from datetime import datetime
+from typing import ClassVar
 
 from pydantic import BaseModel
 
@@ -53,4 +54,31 @@ class JobLog(BaseModel):
 class RunLogs(BaseModel):
     run_id: int
     jobs: list[JobLog]
+    hint: str | None = None
+
+
+# --- get_failing_tests -----------------------------------------------------
+
+
+class TestFailure(BaseModel):
+    __test__: ClassVar[bool] = False  # not a pytest test class
+
+    file: str | None
+    suite: str
+    name: str
+    message: str
+    stack: list[str]
+    duration_ms: int | None
+
+
+class FailingTests(BaseModel):
+    __test__: ClassVar[bool] = False
+
+    reports: list[str]
+    total: int
+    failed: int
+    skipped: int
+    errors: int
+    failures: list[TestFailure]
+    truncated: bool
     hint: str | None = None

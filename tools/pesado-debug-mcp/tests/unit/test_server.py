@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -13,10 +14,10 @@ from mcp.client.stdio import StdioServerParameters
 
 from pesado_debug.config import Settings
 from pesado_debug.server import SERVER_NAME, build_server
-from tests.fixtures import fixture_text
+from tests.fixtures import fixture_path, fixture_text
 
-EXPECTED_TOOLS = {"get_failed_runs", "get_run_logs"}
-GITHUB_TOOLS = {"get_failed_runs", "get_run_logs"}
+EXPECTED_TOOLS = {"get_failed_runs", "get_run_logs", "get_failing_tests"}
+GITHUB_TOOLS = {"get_failed_runs", "get_run_logs", "get_failing_tests"}
 BASE = "https://api.github.com/repos/o/r"
 
 
@@ -97,6 +98,46 @@ async def test_out_of_range_input_is_rejected(github_settings: Settings) -> None
     async with Client(build_server(github_settings)) as client:
         result = await client.call_tool("get_failed_runs", {"limit": 50})
     assert result.is_error
+
+
+async def test_get_failing_tests_schema_has_enums(bare_settings: Settings) -> None:
+    schema = (await _tools(bare_settings))["get_failing_tests"].input_schema
+    assert schema["properties"]["source"]["enum"] == ["local", "ci"]
+    assert schema["properties"]["workspace"]["enum"] == ["backend", "frontend"]
+    assert sorted(schema["required"]) == ["source", "workspace"]
+
+
+async def test_get_failing_tests_local(clean_env: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    reports = tmp_path / "backend" / "reports"
+    reports.mkdir(parents=True)
+    (tmp_path / "frontend").mkdir()
+    (reports / "junit-unit.xml").write_bytes(fixture_path("junit", "vitest-fail.xml").read_bytes())
+    clean_env.setenv("PESADO_REPO_ROOT", str(tmp_path))
+    async with Client(build_server(Settings(_env_file=None))) as client:
+        result = await client.call_tool("get_failing_tests", {"source": "local", "workspace": "backend"})
+    assert not result.is_error
+    assert result.structured_content is not None
+    assert result.structured_content["failed"] == 2
+    assert result.structured_content["reports"] == ["backend/reports/junit-unit.xml"]
+
+
+async def test_get_failing_tests_ci_needs_run_id(github_settings: Settings) -> None:
+    async with Client(build_server(github_settings)) as client:
+        result = await client.call_tool("get_failing_tests", {"source": "ci", "workspace": "backend"})
+    assert result.is_error
+    assert "run_id is required" in result.content[0].text  # type: ignore[union-attr]
+
+
+async def test_unsafe_report_becomes_tool_error(clean_env: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    reports = tmp_path / "frontend" / "reports"
+    reports.mkdir(parents=True)
+    (tmp_path / "backend").mkdir()
+    (reports / "evil.xml").write_bytes(fixture_path("junit", "xxe.xml").read_bytes())
+    clean_env.setenv("PESADO_REPO_ROOT", str(tmp_path))
+    async with Client(build_server(Settings(_env_file=None))) as client:
+        result = await client.call_tool("get_failing_tests", {"source": "local", "workspace": "frontend"})
+    assert result.is_error
+    assert "rejected unsafe XML" in result.content[0].text  # type: ignore[union-attr]
 
 
 def _child_env() -> dict[str, str]:
