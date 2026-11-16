@@ -82,8 +82,14 @@ def resolve_test_file(repo_root: Path, workspace: Workspace, file: str) -> TestT
 
 
 def name_pattern(test_name: str) -> str:
-    """A literal match for `-t`. JUnit joins describe blocks with " > "; Vitest's -t sees spaces."""
-    return re.escape(test_name.replace(" > ", " "))
+    """A literal match for `-t`.
+
+    Vitest 5 matches -t against the full name joined with " > ", the same form
+    its JUnit reporter (and so get_failing_tests) uses, so the name passes
+    through as-is. Checked against Vitest 5.0.5: "computeOrderTotal > sums ..."
+    matches; "computeOrderTotal sums ..." matches nothing.
+    """
+    return re.escape(test_name)
 
 
 def vitest_args(

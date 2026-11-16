@@ -118,10 +118,29 @@ def test_symlink_escaping_the_workspace_is_refused(
 # --- Command line -------------------------------------------------------------------
 
 
-def test_test_name_is_escaped_and_uses_spaces() -> None:
+def test_test_name_is_escaped_and_keeps_the_junit_separator() -> None:
+    """Vitest 5's -t sees "describe > test", exactly as JUnit names it."""
     pattern = rerun.name_pattern("pricing > rounds (1.5) centavos* $(rm -rf /)")
-    assert re.fullmatch(pattern, "pricing rounds (1.5) centavos* $(rm -rf /)")
-    assert not re.fullmatch(pattern, "pricing rounds X1Y5Z centavos")
+    assert re.fullmatch(pattern, "pricing > rounds (1.5) centavos* $(rm -rf /)")
+    assert not re.fullmatch(pattern, "pricing rounds (1.5) centavos* $(rm -rf /)")
+    assert not re.fullmatch(pattern, "pricing > rounds X1Y5Z centavos")
+
+
+async def test_junit_name_matches_a_real_vitest_test() -> None:
+    """End to end against the real backend suite: the JUnit name selects exactly one test."""
+    from pesado_debug.config import DEFAULT_REPO_ROOT
+
+    settings = Settings(_env_file=None, pesado_repo_root=DEFAULT_REPO_ROOT)
+    if not (DEFAULT_REPO_ROOT / "backend" / rerun.VITEST_ENTRY).is_file():
+        pytest.skip("backend/node_modules is not installed")
+    result = await rerun.rerun_test(
+        settings,
+        workspace="backend",
+        file="src/test/unit/lib/pricing.test.ts",
+        test_name="computeOrderTotal > sums database price x quantity in centavos",
+        times=1,
+    )
+    assert result.verdict == "passes_locally"
 
 
 def test_args_pick_the_right_config(repo: Path, tmp_path: Path) -> None:
