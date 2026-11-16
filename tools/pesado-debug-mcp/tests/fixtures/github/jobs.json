@@ -1,0 +1,45 @@
+{
+  "total_count": 3,
+  "jobs": [
+    {
+      "id": 1001,
+      "name": "Backend (typecheck, unit, integration)",
+      "conclusion": "failure",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Typecheck",
+          "conclusion": "failure",
+          "number": 4
+        },
+        {
+          "name": "Unit tests (src/test/unit)",
+          "conclusion": "skipped",
+          "number": 5
+        }
+      ]
+    },
+    {
+      "id": 1002,
+      "name": "Frontend (lint, typecheck, test, build)",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Lint",
+          "conclusion": "success",
+          "number": 4
+        }
+      ]
+    },
+    {
+      "id": 1003,
+      "name": "Debug MCP (lint, types, tests)",
+      "conclusion": "timed_out",
+      "steps": []
+    }
+  ]
+}

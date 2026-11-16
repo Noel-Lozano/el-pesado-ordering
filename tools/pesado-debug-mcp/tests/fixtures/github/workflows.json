@@ -1,0 +1,17 @@
+{
+  "total_count": 2,
+  "workflows": [
+    {
+      "id": 555,
+      "name": "CI",
+      "path": ".github/workflows/ci.yml",
+      "state": "active"
+    },
+    {
+      "id": 556,
+      "name": "Nightly",
+      "path": ".github/workflows/nightly.yml",
+      "state": "active"
+    }
+  ]
+}

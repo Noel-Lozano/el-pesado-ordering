@@ -1,0 +1,31 @@
+{
+  "total_count": 2,
+  "workflow_runs": [
+    {
+      "id": 101,
+      "name": "CI",
+      "head_branch": "feat/broken",
+      "head_sha": "abcdef1234567890",
+      "head_commit": {
+        "message": "Break the typecheck\n\nLonger body that must not appear."
+      },
+      "display_title": "Break the typecheck",
+      "created_at": "2026-11-15T20:00:00Z",
+      "html_url": "https://github.com/o/r/actions/runs/101",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 102,
+      "name": "CI",
+      "head_branch": "main",
+      "head_sha": "1234567abcdef000",
+      "head_commit": null,
+      "display_title": "Merge pull request #9",
+      "created_at": "2026-11-14T10:00:00Z",
+      "html_url": "https://github.com/o/r/actions/runs/102",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+﻿2026-11-15T20:01:00.1234567Z ##[group]Run actions/checkout@v4
+2026-11-15T20:01:01.1234567Z Syncing repository: Noel-Lozano/el_pesado
+2026-11-15T20:01:02.1234567Z ##[endgroup]
+2026-11-15T20:01:03.1234567Z ##[group]Run npm ci
+2026-11-15T20:01:04.1234567Z [36;1mnpm ci[0m
+2026-11-15T20:01:05.1234567Z added 312 packages in 9s
+2026-11-15T20:01:06.1234567Z ##[endgroup]
+2026-11-15T20:01:07.1234567Z ##[group]Run npm run typecheck
+2026-11-15T20:01:08.1234567Z [36;1mnpm run typecheck[0m
+2026-11-15T20:01:09.1234567Z > backend@1.0.0 typecheck
+2026-11-15T20:01:10.1234567Z > tsc --noEmit && tsc -p tsconfig.scripts.json
+2026-11-15T20:01:11.1234567Z src/routes/orders.ts(42,7): [91merror[0m TS2322: Type 'string' is not assignable to type 'number'.
+2026-11-15T20:01:12.1234567Z ##[error]Process completed with exit code 2.
+2026-11-15T20:01:13.1234567Z ##[group]Run actions/upload-artifact@v4
+2026-11-15T20:01:14.1234567Z No files were found with the provided path: backend/test-results/.
+2026-11-15T20:01:15.1234567Z ##[endgroup]
+2026-11-15T20:01:16.1234567Z Post job cleanup.
