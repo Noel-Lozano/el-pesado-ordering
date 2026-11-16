@@ -16,8 +16,15 @@ from pesado_debug.config import Settings
 from pesado_debug.server import SERVER_NAME, build_server
 from tests.fixtures import fixture_path, fixture_text
 
-EXPECTED_TOOLS = {"get_failed_runs", "get_run_logs", "get_failing_tests", "reset_test_db", "seed_test_data"}
-DB_TOOLS = {"reset_test_db", "seed_test_data"}
+EXPECTED_TOOLS = {
+    "get_failed_runs",
+    "get_run_logs",
+    "get_failing_tests",
+    "reset_test_db",
+    "seed_test_data",
+    "rerun_test",
+}
+DB_TOOLS = {"reset_test_db", "seed_test_data", "rerun_test"}
 GITHUB_TOOLS = {"get_failed_runs", "get_run_logs", "get_failing_tests"}
 BASE = "https://api.github.com/repos/o/r"
 
@@ -94,6 +101,22 @@ async def test_reset_requires_confirm_true(bare_settings: Settings) -> None:
     async with Client(build_server(bare_settings)) as client:
         result = await client.call_tool("reset_test_db", {"confirm": False})
     assert result.is_error
+
+
+async def test_rerun_test_schema(bare_settings: Settings) -> None:
+    schema = (await _tools(bare_settings))["rerun_test"].input_schema
+    times = schema["properties"]["times"]
+    assert (times["minimum"], times["maximum"], times["default"]) == (1, 10, 5)
+    assert sorted(schema["required"]) == ["file", "workspace"]
+
+
+async def test_rerun_test_refuses_traversal(bare_settings: Settings) -> None:
+    async with Client(build_server(bare_settings)) as client:
+        result = await client.call_tool(
+            "rerun_test", {"workspace": "backend", "file": "../frontend/package.json"}
+        )
+    assert result.is_error
+    assert "not inside backend/src/test" in result.content[0].text  # type: ignore[union-attr]
 
 
 async def test_input_schemas_carry_bounds(bare_settings: Settings) -> None:

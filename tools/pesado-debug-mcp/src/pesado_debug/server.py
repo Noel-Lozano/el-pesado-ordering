@@ -20,15 +20,18 @@ from pydantic import AwareDatetime, BaseModel, Field
 
 from pesado_debug import __version__
 from pesado_debug.config import ConfigMissingError, Settings
-from pesado_debug.core import artifacts, github, junit, testdb
+from pesado_debug.core import artifacts, github, junit, rerun, testdb
 from pesado_debug.core.artifacts import ArtifactError
 from pesado_debug.core.github import GitHubClient, GitHubError
 from pesado_debug.core.junit import JUnitError
+from pesado_debug.core.migrate import BackendScriptError
+from pesado_debug.core.node_runner import NodeRunnerError
+from pesado_debug.core.rerun import RerunError
 from pesado_debug.core.scenarios import REGISTRY, ScenarioError, ScenarioName
 from pesado_debug.core.shop_time import NaiveDatetimeError
 from pesado_debug.core.testdb import TestDbError, TestDbRefused
 from pesado_debug.logging_setup import configure_logging
-from pesado_debug.models import FailedRuns, FailingTests, ResetResult, RunLogs, SeedResult
+from pesado_debug.models import FailedRuns, FailingTests, RerunResult, ResetResult, RunLogs, SeedResult
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +49,10 @@ GITHUB_READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 TEST_DB_WRITE = ToolAnnotations(
     read_only_hint=False, destructive_hint=True, idempotent_hint=True, open_world_hint=False
 )
+# Runs a local test. Destructive: an integration file resets the test DB first.
+RERUN = ToolAnnotations(
+    read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False
+)
 TEST_DB_SEED = ToolAnnotations(
     read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False
 )
@@ -60,6 +67,9 @@ EXPECTED_ERRORS: tuple[type[Exception], ...] = (
     TestDbError,
     ScenarioError,
     NaiveDatetimeError,
+    RerunError,
+    NodeRunnerError,
+    BackendScriptError,
 )
 
 
@@ -218,6 +228,33 @@ def build_server(settings: Settings) -> MCPServer:
         return tool_result(
             f"Seeded {scenario} into {result.database} at {result.at.isoformat()}: {created}", result
         )
+
+    @server.tool(annotations=RERUN)
+    async def rerun_test(
+        workspace: Annotated[Literal["backend", "frontend"], Field(description="Which npm project.")],
+        file: Annotated[
+            str,
+            Field(
+                description='Test file relative to the workspace, e.g. "src/test/unit/lib/pricing.test.ts".'
+            ),
+        ],
+        test_name: Annotated[
+            str | None,
+            Field(description='Run only this test (as get_failing_tests names it, e.g. "suite > test").'),
+        ] = None,
+        times: Annotated[int, Field(ge=1, le=10, description="How many sequential runs.")] = 5,
+    ) -> Annotated[CallToolResult, RerunResult]:
+        """Run one Vitest test file (or one test) several times locally and give a flake verdict.
+
+        Verdicts: deterministic_fail (every run failed), flaky (mixed), passes_locally (every run
+        passed). Each run has a 60 s limit. Files under backend/src/test/integration need the test DB:
+        it is reset and filled by seed:menu first (CI's state), so any seeded scenario is wiped.
+        """
+        with agent_errors():
+            result = await rerun.rerun_test(
+                settings, workspace=workspace, file=file, test_name=test_name, times=times
+            )
+        return tool_result(rerun.summarize(result), result)
 
     logger.info(
         "server_built",

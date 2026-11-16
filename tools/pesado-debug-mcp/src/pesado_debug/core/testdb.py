@@ -290,3 +290,13 @@ def init_marker(url: str) -> None:
             )
     except psycopg.Error as exc:
         raise TestDbError(f"Database error: {exc}".strip()) from exc
+
+
+def truncate_for_rerun(settings: Settings) -> str:
+    """rerun_test's integration prep, part 1: all three locks, then truncate public (no baseline).
+
+    Returns the URL for seed:menu and the test run, which go to the same database.
+    """
+    with guarded_transaction(settings, "rerun_test") as (conn, _target):
+        truncate_public(conn)
+    return database_url(settings, "rerun_test")

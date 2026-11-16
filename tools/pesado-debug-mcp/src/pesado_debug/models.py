@@ -6,7 +6,7 @@ only wraps them.
 """
 
 from datetime import datetime
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel
 
@@ -99,4 +99,20 @@ class SeedResult(BaseModel):
     database: str
     reset: bool
     ids: dict[str, list[int]]  # rows created by this call, by table
+    notes: list[str]
+
+
+# --- rerun_test --------------------------------------------------------------
+
+
+class RerunResult(BaseModel):
+    file: str
+    test_name: str | None
+    times: int
+    passes: int
+    fails: int
+    verdict: Literal["deterministic_fail", "flaky", "passes_locally"]
+    failure_messages: list[str]  # deduplicated, each <= 500 chars, at most 10
+    timed_out_runs: int
+    db_prepared: Literal["none", "reset+seed:menu"]
     notes: list[str]
