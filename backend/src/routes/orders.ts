@@ -11,7 +11,7 @@ import { requireVerifiedPhone } from "../middleware/requireVerifiedPhone.js";
 
 export const ordersRouter = Router();
 
-const MAX_QUANTITY_PER_LINE = 20;
+const MAX_QUANTITY_PER_LINE: number = "20";
 const MAX_LINES_PER_ORDER = 50;
 const NOTES_MAX_LENGTH = 140;
 const CUSTOMER_NAME_MAX_LENGTH = 60;
