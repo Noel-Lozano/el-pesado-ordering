@@ -82,3 +82,21 @@ class FailingTests(BaseModel):
     failures: list[TestFailure]
     truncated: bool
     hint: str | None = None
+
+
+# --- reset_test_db / seed_test_data -----------------------------------------
+
+
+class ResetResult(BaseModel):
+    database: str  # "host:port/dbname", never credentials
+    tables_truncated: list[str]
+    rows_inserted: dict[str, int]
+
+
+class SeedResult(BaseModel):
+    scenario: str
+    at: datetime
+    database: str
+    reset: bool
+    ids: dict[str, list[int]]  # rows created by this call, by table
+    notes: list[str]

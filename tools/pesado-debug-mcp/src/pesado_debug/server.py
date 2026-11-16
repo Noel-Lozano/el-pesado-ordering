@@ -6,24 +6,29 @@ structured content validated against the tool's output model. Known failures
 (missing config, GitHub errors, ...) become a ToolError the agent can read.
 """
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
+from datetime import datetime
 from typing import Annotated, Literal
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 
 from pesado_debug import __version__
 from pesado_debug.config import ConfigMissingError, Settings
-from pesado_debug.core import artifacts, github, junit
+from pesado_debug.core import artifacts, github, junit, testdb
 from pesado_debug.core.artifacts import ArtifactError
 from pesado_debug.core.github import GitHubClient, GitHubError
 from pesado_debug.core.junit import JUnitError
+from pesado_debug.core.scenarios import REGISTRY, ScenarioError, ScenarioName
+from pesado_debug.core.shop_time import NaiveDatetimeError
+from pesado_debug.core.testdb import TestDbError, TestDbRefused
 from pesado_debug.logging_setup import configure_logging
-from pesado_debug.models import FailedRuns, FailingTests, RunLogs
+from pesado_debug.models import FailedRuns, FailingTests, ResetResult, RunLogs, SeedResult
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +42,25 @@ INSTRUCTIONS = (
 # Reads GitHub only. open_world: results come from an external service.
 GITHUB_READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 
+# Deletes and rewrites rows, but only in a database marked as test (ADR-007 locks).
+TEST_DB_WRITE = ToolAnnotations(
+    read_only_hint=False, destructive_hint=True, idempotent_hint=True, open_world_hint=False
+)
+TEST_DB_SEED = ToolAnnotations(
+    read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False
+)
+
 # Errors whose message is written for the agent; anything else is a bug.
-EXPECTED_ERRORS: tuple[type[Exception], ...] = (ConfigMissingError, GitHubError, ArtifactError, JUnitError)
+EXPECTED_ERRORS: tuple[type[Exception], ...] = (
+    ConfigMissingError,
+    GitHubError,
+    ArtifactError,
+    JUnitError,
+    TestDbRefused,
+    TestDbError,
+    ScenarioError,
+    NaiveDatetimeError,
+)
 
 
 def tool_result(summary: str, model: BaseModel) -> CallToolResult:
@@ -54,6 +76,10 @@ def agent_errors() -> Iterator[None]:
         yield
     except EXPECTED_ERRORS as exc:
         raise ToolError(str(exc)) from exc
+
+
+def _now() -> datetime:
+    return datetime.now().astimezone()
 
 
 def build_server(settings: Settings) -> MCPServer:
@@ -141,6 +167,57 @@ def build_server(settings: Settings) -> MCPServer:
             parsed = junit.parse_reports(raw, workspace=workspace, repo_root=str(settings.pesado_repo_root))
             result = junit.to_failing_tests(parsed)
         return tool_result(junit.summarize(result), result)
+
+    @server.tool(annotations=TEST_DB_WRITE)
+    async def reset_test_db(
+        confirm: Annotated[Literal[True], Field(description="Must be true: this deletes every app row.")],
+    ) -> Annotated[CallToolResult, ResetResult]:
+        """Empty every app table in the TEST database and load the baseline menu and capacity slots.
+
+        Only runs against a database that passes all three locks (PESADO_TEST_DATABASE_URL, an allowed
+        host, and the pesado_meta.env marker row). Never touches production.
+        """
+        with agent_errors():
+            result = await asyncio.to_thread(testdb.reset, settings, at=_now())
+        tables = sum(result.rows_inserted.values())
+        return tool_result(
+            f"Reset {result.database}: truncated {len(result.tables_truncated)} tables, inserted {tables} "
+            "baseline rows.",
+            result,
+        )
+
+    @server.tool(annotations=TEST_DB_SEED)
+    async def seed_test_data(
+        scenario: Annotated[
+            ScenarioName,
+            Field(description="; ".join(f"{name}: {s.description}" for name, s in REGISTRY.items())),
+        ],
+        reset: Annotated[bool, Field(description="Truncate every app table first.")] = True,
+        at: Annotated[
+            AwareDatetime | None,
+            Field(
+                description=(
+                    "Scenario time, with a UTC offset. Default: the scenario's own default (often now)."
+                )
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, SeedResult]:
+        """Load a named scenario into the TEST database and return the IDs it created.
+
+        Rows are written directly (never through the API, Twilio or Stripe), with fixed IDs in reserved
+        blocks (customers 9001+, menu 9101+, slots 9201+, orders 9301+, order items 9401+). Use it to
+        reproduce a bug by hand through the API or UI. Don't seed before rerun_test on an integration
+        file: that rerun resets the database itself.
+        """
+        with agent_errors():
+            chosen_at = at if at is not None else REGISTRY[scenario].default_at(_now())
+            result = await asyncio.to_thread(
+                testdb.seed, settings, scenario=scenario, at=chosen_at, reset_first=reset
+            )
+        created = ", ".join(f"{table} {ids}" for table, ids in result.ids.items())
+        return tool_result(
+            f"Seeded {scenario} into {result.database} at {result.at.isoformat()}: {created}", result
+        )
 
     logger.info(
         "server_built",

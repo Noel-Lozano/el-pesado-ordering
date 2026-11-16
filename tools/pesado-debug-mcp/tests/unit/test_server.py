@@ -16,7 +16,8 @@ from pesado_debug.config import Settings
 from pesado_debug.server import SERVER_NAME, build_server
 from tests.fixtures import fixture_path, fixture_text
 
-EXPECTED_TOOLS = {"get_failed_runs", "get_run_logs", "get_failing_tests"}
+EXPECTED_TOOLS = {"get_failed_runs", "get_run_logs", "get_failing_tests", "reset_test_db", "seed_test_data"}
+DB_TOOLS = {"reset_test_db", "seed_test_data"}
 GITHUB_TOOLS = {"get_failed_runs", "get_run_logs", "get_failing_tests"}
 BASE = "https://api.github.com/repos/o/r"
 
@@ -46,6 +47,53 @@ async def test_github_tools_are_read_only_and_open_world(bare_settings: Settings
         assert annotations is not None
         assert annotations.read_only_hint is True
         assert annotations.open_world_hint is True
+
+
+async def test_db_tools_are_destructive_and_closed_world(bare_settings: Settings) -> None:
+    tools = await _tools(bare_settings)
+    for name in DB_TOOLS:
+        annotations = tools[name].annotations
+        assert annotations is not None
+        assert annotations.read_only_hint is False
+        assert annotations.destructive_hint is True
+        assert annotations.open_world_hint is False
+
+
+async def test_db_tool_schemas(bare_settings: Settings) -> None:
+    tools = await _tools(bare_settings)
+    confirm = tools["reset_test_db"].input_schema["properties"]["confirm"]
+    assert confirm.get("const") is True or confirm.get("enum") == [True]
+    scenario = tools["seed_test_data"].input_schema["properties"]["scenario"]
+    assert scenario["enum"] == [
+        "baseline",
+        "asap_order",
+        "scheduled_pickup",
+        "unpaid_order",
+        "mx_customer",
+        "after_2pm_before_14",
+    ]
+
+
+async def test_reset_without_test_db_url_names_the_variable(clean_env: pytest.MonkeyPatch) -> None:
+    clean_env.setenv("DATABASE_URL", "postgresql://u:p@localhost/prod")
+    async with Client(build_server(Settings(_env_file=None))) as client:
+        result = await client.call_tool("reset_test_db", {"confirm": True})
+    assert result.is_error
+    assert "PESADO_TEST_DATABASE_URL" in result.content[0].text  # type: ignore[union-attr]
+
+
+async def test_reset_refuses_remote_host(clean_env: pytest.MonkeyPatch) -> None:
+    clean_env.setenv("PESADO_TEST_DATABASE_URL", "postgresql://u:p@db.prod.example/postgres")
+    async with Client(build_server(Settings(_env_file=None))) as client:
+        result = await client.call_tool("reset_test_db", {"confirm": True})
+    assert result.is_error
+    assert "not allowed" in result.content[0].text  # type: ignore[union-attr]
+
+
+async def test_reset_requires_confirm_true(bare_settings: Settings) -> None:
+    async with Client(build_server(bare_settings)) as client:
+        result = await client.call_tool("reset_test_db", {"confirm": False})
+    assert result.is_error
 
 
 async def test_input_schemas_carry_bounds(bare_settings: Settings) -> None:

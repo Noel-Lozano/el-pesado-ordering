@@ -52,3 +52,12 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[pytest.MonkeyPatch]:
 def bare_settings(clean_env: pytest.MonkeyPatch) -> Settings:
     """Settings with nothing configured and no .env file read."""
     return Settings(_env_file=None)
+
+
+@pytest.fixture(scope="session")
+def test_db_url() -> str:
+    """The migrated, marked test DB for integration tests (skipped when unset, see above)."""
+    url = os.environ.get("PESADO_TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("PESADO_TEST_DATABASE_URL is not set")
+    return url

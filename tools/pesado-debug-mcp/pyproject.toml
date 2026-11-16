@@ -16,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 pesado-debug-mcp = "pesado_debug.server:main"
+pesado-debug = "pesado_debug.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.9,<0.14"]
@@ -34,6 +35,8 @@ select = ["E", "F", "I", "B", "UP", "S", "T20", "ASYNC", "RUF"]
 [tool.ruff.lint.per-file-ignores]
 # pytest uses bare assert by design.
 "tests/**" = ["S101"]
+# The CLI talks to a person on stdout. The MCP server never imports it.
+"src/pesado_debug/cli.py" = ["T201"]
 
 [tool.mypy]
 strict = true

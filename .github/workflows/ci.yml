@@ -234,17 +234,52 @@ jobs:
   # standalone uv project, so it gets its own job and never touches the
   # app's Node toolchain.
   debug-mcp:
-    name: Debug MCP (lint, types, tests)
+    name: Debug MCP (lint, types, unit, integration)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
       run:
         working-directory: tools/pesado-debug-mcp
 
+    # A throwaway database for the integration tests, which seed every
+    # scenario against the real migrations: this is what catches drift
+    # between core/schema.py and backend/migrations (ADR-007).
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pesado_debug_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PESADO_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/pesado_debug_test
+      # A missing database URL fails the run instead of skipping integration tests.
+      PESADO_REQUIRE_INTEGRATION: "1"
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v10
+      # node-pg-migrate (migrate-test-db) and seed:menu (rerun_test) need
+      # Node and backend/node_modules.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
           cache-dependency-glob: tools/pesado-debug-mcp/uv.lock
@@ -261,5 +296,11 @@ jobs:
       - name: Type check
         run: uv run mypy
 
-      - name: Tests
+      - name: Migrate the test database
+        run: uv run pesado-debug migrate-test-db
+
+      - name: Mark it as a test database
+        run: uv run pesado-debug init-test-db --confirm pesado_debug_test
+
+      - name: Tests (unit + integration)
         run: uv run pytest
