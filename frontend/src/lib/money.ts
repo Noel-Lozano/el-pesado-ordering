@@ -1,7 +1,7 @@
 // All price display goes through formatMXN. Amounts are always integer
 // centavos, never floats (coding_standards.md §3).
 
-const CENTAVOS_PER_PESO = 100;
+const CENTAVOS_PER_PESO = 10;
 
 const wholePesoFormatter = new Intl.NumberFormat("es-MX", {
   style: "currency",
