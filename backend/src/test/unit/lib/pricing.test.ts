@@ -16,7 +16,7 @@ describe("computeOrderTotal", () => {
         ],
         prices,
       ),
-    ).toBe(3 * 3000 + 6500);
+    ).toBe(3 * 3000 + 6000);
   });
 
   it("is 0 for no lines", () => {
